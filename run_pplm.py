@@ -882,4 +882,20 @@ if __name__ == '__main__':
                         help="verbosiry level")
 
     args = parser.parse_args()
+    setattr(args, "bag_of_words", "technology")
+    setattr(args, "cond_text", "The Lake is a")
+    setattr(args, "length", 80)
+    setattr(args, "gamma", 1)  # this is used as an exponent, so only 0-1 makes sense to me. If it's above 0, it also makes the text more repetitive, despite the decay. If 0, it doesn't seem to perturb anything.
+    setattr(args, "num_iterations", 6)
+    setattr(args, "num_samples", 1)
+    setattr(args, "stepsize", 0.03)
+    setattr(args, "window_length", 5)
+    setattr(args, "kl_scale", 0.01)
+    setattr(args, "gm_scale", 0.95) # controls how the perturbed probabilites are mixed with the unperturbed ones. 1 = only perturbed, 0 = only unperturbed
+    setattr(args, "colorama", True)
+    setattr(args, "sample", True)
+    setattr(args, "no_cuda", True)
+    setattr(args, "decay", True)   # important, otherwise it keeps shifting and shifting the hidden state until it starts repeating itself
+    setattr(args, "verbosity", "very_verbose")
+    print (args)
     run_pplm_example(**vars(args))
