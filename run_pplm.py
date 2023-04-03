@@ -32,7 +32,7 @@ import torch
 import torch.nn.functional as F
 from torch.autograd import Variable
 from tqdm import trange
-from transformers import GPT2Tokenizer, GPT2LMHeadModel
+from transformers import MarianTokenizer, MarianMTModel
 
 
 PPLM_BOW = 1
@@ -114,6 +114,7 @@ def top_k_filter(logits, k, probs=False):
 def perturb_past(
         past,
         model,
+        source_text_tokenized,
         last,
         unpert_past=None,
         unpert_logits=None,
@@ -133,6 +134,9 @@ def perturb_past(
         device='cuda',
         verbosity_level=REGULAR
 ):
+    assert source_text_tokenized is not None
+    source_text_tensor = torch.LongTensor([source_text_tokenized]).to(device)
+
     past = [torch.cat((p[0].unsqueeze(0), p[1].unsqueeze(0)), dim=0) for p in past]
     # Generate inital perturbed past
     grad_accumulator = [
@@ -194,8 +198,8 @@ def perturb_past(
         # Compute hidden using perturbed past
         perturbed_past = list(map(add, past, curr_perturbation))
         _, _, _, curr_length, _ = curr_perturbation[0].shape
-        model_output = model(last, past_key_values=perturbed_past)
-        all_logits, _, all_hidden = model_output.logits, model_output.past_key_values, model_output.hidden_states
+        model_output = model(input_ids=source_text_tensor, decoder_input_ids=last, past_key_values=perturbed_past)
+        all_logits, _, all_hidden = model_output.logits, model_output.past_key_values, model_output.decoder_hidden_states
         hidden = all_hidden[-1]
         new_accumulated_hidden = accumulated_hidden + torch.sum(
             hidden,
@@ -225,10 +229,11 @@ def perturb_past(
             for _ in range(horizon_length):
                 inputs_embeds = torch.matmul(curr_probs, wte.weight.data)
                 model_output = model(
+                    input_ids=source_text_tensor,
                     past_key_values=curr_unpert_past,
-                    inputs_embeds=inputs_embeds
+                    decoder_inputs_embeds=inputs_embeds
                 )
-                _, curr_unpert_past, curr_all_hidden = model_output.logits, model_output.past_key_values, model_output.hidden_states
+                _, curr_unpert_past, curr_all_hidden = model_output.logits, model_output.past_key_values, model_output.decoder_hidden_states
                 curr_hidden = curr_all_hidden[-1]
                 new_accumulated_hidden = new_accumulated_hidden + torch.sum(
                     curr_hidden, dim=1)
@@ -324,7 +329,6 @@ def get_bag_of_words_indices(bag_of_words_ids_or_paths: List[str], tokenizer) ->
             words = f.read().strip().split("\n")
         bow_indices.append(
             [tokenizer.encode(word.strip(),
-                              add_prefix_space=True,
                               add_special_tokens=False)
              for word in words])
     return bow_indices
@@ -400,7 +404,8 @@ def full_text_generation(
     unpert_gen_tok_text, _, _ = generate_text_pplm(
         model=model,
         tokenizer=tokenizer,
-        context=context,
+        source_text_tokenized=context,
+        context=None,
         device=device,
         length=length,
         sample=sample,
@@ -418,7 +423,8 @@ def full_text_generation(
         pert_gen_tok_text, discrim_loss, loss_in_time = generate_text_pplm(
             model=model,
             tokenizer=tokenizer,
-            context=context,
+            source_text_tokenized=context,
+            context=None,
             device=device,
             perturb=True,
             bow_indices=bow_indices,
@@ -454,6 +460,7 @@ def full_text_generation(
 def generate_text_pplm(
         model,
         tokenizer,
+        source_text_tokenized=None,
         context=None,
         past=None,
         device="cuda",
@@ -477,13 +484,9 @@ def generate_text_pplm(
         kl_scale=0.01,
         verbosity_level=REGULAR
 ):
-    output_so_far = None
-    if context:
-        context_t = torch.tensor(context, device=device, dtype=torch.long)
-        while len(context_t.shape) < 2:
-            context_t = context_t.unsqueeze(0)
-        output_so_far = context_t
-
+    output_so_far = torch.LongTensor([[tokenizer.pad_token_id]]).to(device)
+    assert source_text_tokenized is not None
+    source_text_tensor = torch.LongTensor([source_text_tokenized]).to(device)
     # collect one hot vectors for bags of words
     one_hot_bows_vectors = build_bows_one_hot_vectors(bow_indices, tokenizer,
                                                       device)
@@ -507,11 +510,11 @@ def generate_text_pplm(
         if past is None and output_so_far is not None:
             last = output_so_far[:, -1:]
             if output_so_far.shape[1] > 1:
-                model_output = model(output_so_far[:, :-1])
-                _, past, _ = model_output.logits, model_output.past_key_values, model_output.hidden_states
+                model_output = model(input_ids=source_text_tensor, decoder_input_ids=output_so_far[:, :-1])
+                _, past, _ = model_output.logits, model_output.past_key_values, model_output.decoder_hidden_states
 
-        model_output = model(output_so_far)
-        unpert_logits, unpert_past, unpert_all_hidden = model_output.logits, model_output.past_key_values, model_output.hidden_states
+        model_output = model(input_ids=source_text_tensor, decoder_input_ids=output_so_far)
+        unpert_logits, unpert_past, unpert_all_hidden = model_output.logits, model_output.past_key_values, model_output.decoder_hidden_states
         unpert_last_hidden = unpert_all_hidden[-1]
 
         # check if we are abowe grad max length
@@ -532,6 +535,7 @@ def generate_text_pplm(
                 pert_past, _, grad_norms, loss_this_iter = perturb_past(
                     past,
                     model,
+                    source_text_tokenized,
                     last,
                     unpert_past=unpert_past,
                     unpert_logits=unpert_logits,
@@ -555,8 +559,8 @@ def generate_text_pplm(
             else:
                 pert_past = past
 
-        model_output = model(last, past_key_values=pert_past)
-        pert_logits, past, pert_all_hidden = model_output.logits, model_output.past_key_values, model_output.hidden_states
+        model_output = model(input_ids=source_text_tensor, decoder_input_ids=last, past_key_values=pert_past)
+        pert_logits, past, pert_all_hidden = model_output.logits, model_output.past_key_values, model_output.decoder_hidden_states
         pert_logits = pert_logits[:, -1, :] / temperature  # + SMALL_CONST
         pert_probs = F.softmax(pert_logits, dim=-1)
 
@@ -606,6 +610,9 @@ def generate_text_pplm(
         )
         if verbosity_level >= REGULAR:
             print(tokenizer.decode(output_so_far.tolist()[0]))
+        
+        if last == tokenizer.eos_token_id:
+            break
 
     return output_so_far, unpert_discrim_loss, loss_in_time
 
@@ -676,7 +683,7 @@ def run_pplm_example(
                 "to discriminator's = {}".format(discrim, pretrained_model))
 
     # load pretrained model
-    model = GPT2LMHeadModel.from_pretrained(
+    model = MarianMTModel.from_pretrained(
         pretrained_model,
         output_hidden_states=True
     )
@@ -684,7 +691,7 @@ def run_pplm_example(
     model.eval()
 
     # load tokenizer
-    tokenizer = GPT2Tokenizer.from_pretrained(pretrained_model)
+    tokenizer = MarianTokenizer.from_pretrained(pretrained_model)
 
     # Freeze GPT-2 weights
     for param in model.parameters():
@@ -702,8 +709,8 @@ def run_pplm_example(
             print("Did you forget to add `--cond_text`? ")
             raw_text = input("Model prompt >>> ")
         tokenized_cond_text = tokenizer.encode(
-            tokenizer.bos_token + raw_text,
-            add_special_tokens=False
+            raw_text,
+            add_special_tokens=True
         )
 
     print("= Prefix of sentence =")
@@ -882,8 +889,9 @@ if __name__ == '__main__':
                         help="verbosiry level")
 
     args = parser.parse_args()
+    setattr(args, "pretrained_model", "Helsinki-NLP/opus-mt-de-en")
     setattr(args, "bag_of_words", "technology")
-    setattr(args, "cond_text", "The Lake is a")
+    setattr(args, "cond_text", "Dies ist ein Test der Domänenanpassung für neuronische maschinelle Übersetzung.")
     setattr(args, "length", 80)
     setattr(args, "gamma", 1)  # this is used as an exponent, so only 0-1 makes sense to me. If it's above 0, it also makes the text more repetitive, despite the decay. If 0, it doesn't seem to perturb anything.
     setattr(args, "num_iterations", 6)
