@@ -32,11 +32,8 @@ import torch
 import torch.nn.functional as F
 from torch.autograd import Variable
 from tqdm import trange
-from transformers import GPT2Tokenizer
-from transformers.file_utils import cached_path
-from transformers.modeling_gpt2 import GPT2LMHeadModel
+from transformers import GPT2Tokenizer, GPT2LMHeadModel
 
-from pplm_classification_head import ClassificationHead
 
 PPLM_BOW = 1
 PPLM_DISCRIM = 2
@@ -136,6 +133,7 @@ def perturb_past(
         device='cuda',
         verbosity_level=REGULAR
 ):
+    past = [torch.cat((p[0].unsqueeze(0), p[1].unsqueeze(0)), dim=0) for p in past]
     # Generate inital perturbed past
     grad_accumulator = [
         (np.zeros(p.shape).astype("float32"))
@@ -196,7 +194,8 @@ def perturb_past(
         # Compute hidden using perturbed past
         perturbed_past = list(map(add, past, curr_perturbation))
         _, _, _, curr_length, _ = curr_perturbation[0].shape
-        all_logits, _, all_hidden = model(last, past=perturbed_past)
+        model_output = model(last, past_key_values=perturbed_past)
+        all_logits, _, all_hidden = model_output.logits, model_output.past_key_values, model_output.hidden_states
         hidden = all_hidden[-1]
         new_accumulated_hidden = accumulated_hidden + torch.sum(
             hidden,
@@ -225,10 +224,11 @@ def perturb_past(
             wte = model.resize_token_embeddings()
             for _ in range(horizon_length):
                 inputs_embeds = torch.matmul(curr_probs, wte.weight.data)
-                _, curr_unpert_past, curr_all_hidden = model(
-                    past=curr_unpert_past,
+                model_output = model(
+                    past_key_values=curr_unpert_past,
                     inputs_embeds=inputs_embeds
                 )
+                _, curr_unpert_past, curr_all_hidden = model_output.logits, model_output.past_key_values, model_output.hidden_states
                 curr_hidden = curr_all_hidden[-1]
                 new_accumulated_hidden = new_accumulated_hidden + torch.sum(
                     curr_hidden, dim=1)
@@ -259,11 +259,11 @@ def perturb_past(
                 (corrected_probs * (corrected_probs / unpert_probs).log()).sum()
             )
             if verbosity_level >= VERY_VERBOSE:
-                print(' kl_loss', kl_loss.data.cpu().numpy())
+                print(' kl_loss', kl_loss.data.cpu().numpy() / kl_scale)
             loss += kl_loss
 
         loss_per_iter.append(loss.data.cpu().numpy())
-        if verbosity_level >= VERBOSE:
+        if verbosity_level >= VERY_VERBOSE:
             print(' pplm_loss', (loss - kl_loss).data.cpu().numpy())
 
         # compute gradients
@@ -308,67 +308,16 @@ def perturb_past(
         for p_ in grad_accumulator
     ]
     pert_past = list(map(add, past, grad_accumulator))
-
+    pert_past = [[p[0], p[1]] for p in pert_past]
     return pert_past, new_accumulated_hidden, grad_norms, loss_per_iter
 
-
-def get_classifier(
-        name: Optional[str],
-        class_label: Union[str, int],
-        device: str,
-        verbosity_level: int = REGULAR
-) -> Tuple[Optional[ClassificationHead], Optional[int]]:
-    if name is None:
-        return None, None
-
-    params = DISCRIMINATOR_MODELS_PARAMS[name]
-    classifier = ClassificationHead(
-        class_size=params['class_size'],
-        embed_size=params['embed_size']
-    ).to(device)
-    if "url" in params:
-        resolved_archive_file = cached_path(params["url"])
-    elif "path" in params:
-        resolved_archive_file = params["path"]
-    else:
-        raise ValueError("Either url or path have to be specified "
-                         "in the discriminator model parameters")
-    classifier.load_state_dict(
-        torch.load(resolved_archive_file, map_location=device))
-    classifier.eval()
-
-    if isinstance(class_label, str):
-        if class_label in params["class_vocab"]:
-            label_id = params["class_vocab"][class_label]
-        else:
-            label_id = params["default_class"]
-            if verbosity_level >= REGULAR:
-                print("class_label {} not in class_vocab".format(class_label))
-                print("available values are: {}".format(params["class_vocab"]))
-                print("using default class {}".format(label_id))
-
-    elif isinstance(class_label, int):
-        if class_label in set(params["class_vocab"].values()):
-            label_id = class_label
-        else:
-            label_id = params["default_class"]
-            if verbosity_level >= REGULAR:
-                print("class_label {} not in class_vocab".format(class_label))
-                print("available values are: {}".format(params["class_vocab"]))
-                print("using default class {}".format(label_id))
-
-    else:
-        label_id = params["default_class"]
-
-    return classifier, label_id
-
-
+""" Gets the given bags of words, tokenizes each word in it and returns a list of their indices. """
 def get_bag_of_words_indices(bag_of_words_ids_or_paths: List[str], tokenizer) -> \
         List[List[List[int]]]:
     bow_indices = []
     for id_or_path in bag_of_words_ids_or_paths:
         if id_or_path in BAG_OF_WORDS_ARCHIVE_MAP:
-            filepath = cached_path(BAG_OF_WORDS_ARCHIVE_MAP[id_or_path])
+            filepath = './' + id_or_path + '.txt'
         else:
             filepath = id_or_path
         with open(filepath, "r") as f:
@@ -381,6 +330,7 @@ def get_bag_of_words_indices(bag_of_words_ids_or_paths: List[str], tokenizer) ->
     return bow_indices
 
 
+""" Builds a one-hot vector for each word in the bag of words. """
 def build_bows_one_hot_vectors(bow_indices, tokenizer, device='cuda'):
     if bow_indices is None:
         return None
@@ -399,7 +349,7 @@ def build_bows_one_hot_vectors(bow_indices, tokenizer, device='cuda'):
 def full_text_generation(
         model,
         tokenizer,
-        context=None,
+        context=None, # condition text
         num_samples=1,
         device="cuda",
         bag_of_words=None,
@@ -421,11 +371,7 @@ def full_text_generation(
         verbosity_level=REGULAR,
         **kwargs
 ):
-    classifier, class_id = get_classifier(
-        discrim,
-        class_label,
-        device
-    )
+    classifier, class_id = None, None
 
     bow_indices = []
     if bag_of_words:
@@ -561,9 +507,11 @@ def generate_text_pplm(
         if past is None and output_so_far is not None:
             last = output_so_far[:, -1:]
             if output_so_far.shape[1] > 1:
-                _, past, _ = model(output_so_far[:, :-1])
+                model_output = model(output_so_far[:, :-1])
+                _, past, _ = model_output.logits, model_output.past_key_values, model_output.hidden_states
 
-        unpert_logits, unpert_past, unpert_all_hidden = model(output_so_far)
+        model_output = model(output_so_far)
+        unpert_logits, unpert_past, unpert_all_hidden = model_output.logits, model_output.past_key_values, model_output.hidden_states
         unpert_last_hidden = unpert_all_hidden[-1]
 
         # check if we are abowe grad max length
@@ -607,7 +555,8 @@ def generate_text_pplm(
             else:
                 pert_past = past
 
-        pert_logits, past, pert_all_hidden = model(last, past=pert_past)
+        model_output = model(last, past_key_values=pert_past)
+        pert_logits, past, pert_all_hidden = model_output.logits, model_output.past_key_values, model_output.hidden_states
         pert_logits = pert_logits[:, -1, :] / temperature  # + SMALL_CONST
         pert_probs = F.softmax(pert_logits, dim=-1)
 
@@ -711,7 +660,7 @@ def run_pplm_example(
     verbosity_level = VERBOSITY_LEVELS.get(verbosity.lower(), REGULAR)
 
     # set the device
-    device = "cuda" if torch.cuda.is_available() and not no_cuda else "cpu"
+    device = "mps" if torch.backends.mps.is_available() and not no_cuda else "cpu"
 
     if discrim == 'generic':
         set_generic_model_params(discrim_weights, discrim_meta)
