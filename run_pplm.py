@@ -321,10 +321,7 @@ def get_bag_of_words_indices(bag_of_words_ids_or_paths: List[str], tokenizer) ->
         List[List[List[int]]]:
     bow_indices = []
     for id_or_path in bag_of_words_ids_or_paths:
-        if id_or_path in BAG_OF_WORDS_ARCHIVE_MAP:
-            filepath = './' + id_or_path + '.txt'
-        else:
-            filepath = id_or_path
+        filepath = './' + id_or_path + '.txt'
         with open(filepath, "r") as f:
             words = f.read().strip().split("\n")
         bow_indices.append(
@@ -660,8 +657,9 @@ def run_pplm_example(
         verbosity='regular'
 ):
     # set Random seed
-    torch.manual_seed(seed)
-    np.random.seed(seed)
+    if seed is not None:
+        torch.manual_seed(seed)
+        np.random.seed(seed)
 
     # set verbosiry
     verbosity_level = VERBOSITY_LEVELS.get(verbosity.lower(), REGULAR)
@@ -889,17 +887,19 @@ if __name__ == '__main__':
                         help="verbosiry level")
 
     args = parser.parse_args()
+    setattr(args, "seed", None)
     setattr(args, "pretrained_model", "Helsinki-NLP/opus-mt-de-en")
     setattr(args, "bag_of_words", "technology")
     setattr(args, "cond_text", "Dies ist ein Test der Domänenanpassung für neuronische maschinelle Übersetzung.")
+    #setattr(args, "cond_text", "Ich weiß, das Maschinelles Lernen ist ein schnell wachsender technologisches Bereich.")
     setattr(args, "length", 80)
     setattr(args, "gamma", 1)  # this is used as an exponent, so only 0-1 makes sense to me. If it's above 0, it also makes the text more repetitive, despite the decay. If 0, it doesn't seem to perturb anything.
     setattr(args, "num_iterations", 6)
     setattr(args, "num_samples", 1)
     setattr(args, "stepsize", 0.03)
     setattr(args, "window_length", 5)
-    setattr(args, "kl_scale", 0.01)
-    setattr(args, "gm_scale", 0.95) # controls how the perturbed probabilites are mixed with the unperturbed ones. 1 = only perturbed, 0 = only unperturbed
+    setattr(args, "kl_scale", 0.01) # λ_KL scale of the KL coefficient
+    setattr(args, "gm_scale", 0.95) # γ_gm controls how the perturbed probabilites are mixed with the unperturbed ones. 1 = only perturbed, 0 = only unperturbed
     setattr(args, "colorama", True)
     setattr(args, "sample", True)
     setattr(args, "no_cuda", True)
