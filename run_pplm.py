@@ -33,7 +33,7 @@ import torch.nn.functional as F
 from torch.autograd import Variable
 from tqdm import trange
 from transformers import MarianTokenizer, MarianMTModel
-
+from pplm_classification_head import ClassificationHead
 
 PPLM_BOW = 1
 PPLM_DISCRIM = 2
@@ -75,6 +75,7 @@ DISCRIMINATOR_MODELS_PARAMS = {
     },
     "sentiment": {
         "url": "https://s3.amazonaws.com/models.huggingface.co/bert/pplm/discriminators/SST_classifier_head.pt",
+        "path": "./sentiment_classifier_head.pt", # this is just manually downloaded from the above url
         "class_size": 5,
         "embed_size": 1024,
         "class_vocab": {"very_positive": 2, "very_negative": 3},
@@ -316,6 +317,52 @@ def perturb_past(
     pert_past = [[p[0], p[1]] for p in pert_past]
     return pert_past, new_accumulated_hidden, grad_norms, loss_per_iter
 
+
+def get_classifier(
+        name: Optional[str],
+        class_label: Union[str, int],
+        device: str,
+        verbosity_level: int = REGULAR
+) -> Tuple[Optional[ClassificationHead], Optional[int]]:
+    if name is None:
+        return None, None
+
+    params = DISCRIMINATOR_MODELS_PARAMS[name]
+    classifier = ClassificationHead(
+        class_size=params['class_size'],
+        embed_size=params['embed_size']
+    ).to(device)
+    resolved_archive_file = params["path"]
+    classifier.load_state_dict(
+        torch.load(resolved_archive_file, map_location=device))
+    classifier.eval()
+
+    if isinstance(class_label, str):
+        if class_label in params["class_vocab"]:
+            label_id = params["class_vocab"][class_label]
+        else:
+            label_id = params["default_class"]
+            if verbosity_level >= REGULAR:
+                print("class_label {} not in class_vocab".format(class_label))
+                print("available values are: {}".format(params["class_vocab"]))
+                print("using default class {}".format(label_id))
+
+    elif isinstance(class_label, int):
+        if class_label in set(params["class_vocab"].values()):
+            label_id = class_label
+        else:
+            label_id = params["default_class"]
+            if verbosity_level >= REGULAR:
+                print("class_label {} not in class_vocab".format(class_label))
+                print("available values are: {}".format(params["class_vocab"]))
+                print("using default class {}".format(label_id))
+
+    else:
+        label_id = params["default_class"]
+
+    return classifier, label_id
+
+
 """ Gets the given bags of words, tokenizes each word in it and returns a list of their indices. """
 def get_bag_of_words_indices(bag_of_words_ids_or_paths: List[str], tokenizer) -> \
         List[List[List[int]]]:
@@ -370,9 +417,14 @@ def full_text_generation(
         gm_scale=0.9,
         kl_scale=0.01,
         verbosity_level=REGULAR,
+        seed=None,
         **kwargs
 ):
-    classifier, class_id = None, None
+    classifier, class_id = get_classifier(
+        discrim,
+        class_label,
+        device
+    )
 
     bow_indices = []
     if bag_of_words:
@@ -415,6 +467,10 @@ def full_text_generation(
     pert_gen_tok_texts = []
     discrim_losses = []
     losses_in_time = []
+
+    if seed is not None:
+        torch.manual_seed(seed)
+        np.random.seed(seed)
 
     for i in range(num_samples):
         pert_gen_tok_text, discrim_loss, loss_in_time = generate_text_pplm(
@@ -741,7 +797,8 @@ def run_pplm_example(
         gamma=gamma,
         gm_scale=gm_scale,
         kl_scale=kl_scale,
-        verbosity_level=verbosity_level
+        verbosity_level=verbosity_level,
+        seed=seed
     )
 
     # untokenize unperturbed text
@@ -798,6 +855,31 @@ def run_pplm_example(
 
     return
 
+def setup_bow_args(args):
+    setattr(args, "bag_of_words", "technology")
+    setattr(args, "gamma", 1)  # this is used as an exponent, so only 0-1 makes sense to me. If it's above 0, it also makes the text more repetitive, despite the decay. If 0, it doesn't seem to perturb anything.
+    setattr(args, "num_iterations", 6)
+    setattr(args, "num_samples", 1)
+    setattr(args, "stepsize", 0.1)
+    setattr(args, "window_length", 5)
+    setattr(args, "kl_scale", 0.1) # λ_KL scale of the KL coefficient
+    setattr(args, "gm_scale", 0.95) # γ_gm controls how the perturbed probabilites are mixed with the unperturbed ones. 1 = only perturbed, 0 = only unperturbed
+    setattr(args, "sample", False)
+    setattr(args, "decay", True)   # important, otherwise it keeps shifting and shifting the hidden state until it starts repeating itself
+
+def setup_discriminator_args(args): 
+        # python examples/run_pplm.py -D sentiment --class_label 3 --cond_text "The lake" --length 10 --gamma 1.0 --num_iterations 30 --num_samples 10 --stepsize 0.01 --kl_scale 0.01 --gm_scale 0.95
+    setattr(args, "discrim", "sentiment")
+    setattr(args, "class_label", 3)
+    setattr(args, "gamma", 1)  # this is used as an exponent, so only 0-1 makes sense to me. If it's above 0, it also makes the text more repetitive, despite the decay. If 0, it doesn't seem to perturb anything.
+    setattr(args, "num_iterations", 6)
+    setattr(args, "num_samples", 1)
+    setattr(args, "stepsize", 0.01)
+    setattr(args, "window_length", 5)
+    setattr(args, "kl_scale", 0.01) # λ_KL scale of the KL coefficient
+    setattr(args, "gm_scale", 0.95) # γ_gm controls how the perturbed probabilites are mixed with the unperturbed ones. 1 = only perturbed, 0 = only unperturbed
+    setattr(args, "sample", False)
+    setattr(args, "decay", True)   # important, otherwise it keeps shifting and shifting the hidden state until it starts repeating itself
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -887,23 +969,19 @@ if __name__ == '__main__':
                         help="verbosiry level")
 
     args = parser.parse_args()
-    setattr(args, "seed", None)
+    import random
+    setattr(args, "seed", random.randint(0, 100000000))
+    setattr(args, "seed", 0)
     setattr(args, "pretrained_model", "Helsinki-NLP/opus-mt-de-en")
-    setattr(args, "bag_of_words", "technology")
     setattr(args, "cond_text", "Dies ist ein Test der Domänenanpassung für neuronische maschinelle Übersetzung.")
-    #setattr(args, "cond_text", "Ich weiß, das Maschinelles Lernen ist ein schnell wachsender technologisches Bereich.")
-    setattr(args, "length", 80)
-    setattr(args, "gamma", 1)  # this is used as an exponent, so only 0-1 makes sense to me. If it's above 0, it also makes the text more repetitive, despite the decay. If 0, it doesn't seem to perturb anything.
-    setattr(args, "num_iterations", 6)
-    setattr(args, "num_samples", 1)
-    setattr(args, "stepsize", 0.03)
-    setattr(args, "window_length", 5)
-    setattr(args, "kl_scale", 0.01) # λ_KL scale of the KL coefficient
-    setattr(args, "gm_scale", 0.95) # γ_gm controls how the perturbed probabilites are mixed with the unperturbed ones. 1 = only perturbed, 0 = only unperturbed
+    # setattr(args, "cond_text", "Ich weiß, das Maschinelles Lernen ist ein schnell wachsender technologisches Bereich.")
+    setattr(args, "length", 50)
     setattr(args, "colorama", True)
-    setattr(args, "sample", True)
     setattr(args, "no_cuda", True)
-    setattr(args, "decay", True)   # important, otherwise it keeps shifting and shifting the hidden state until it starts repeating itself
     setattr(args, "verbosity", "very_verbose")
+
+    setup_bow_args(args)
+    # setup_discriminator_args(args)
     print (args)
     run_pplm_example(**vars(args))
+
