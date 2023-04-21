@@ -385,7 +385,7 @@ def build_bows_one_hot_vectors(bow_indices, tokenizer, device='cuda'):
 
     one_hot_bows_vectors = []
     for single_bow in bow_indices:
-        single_bow = list(filter(lambda x: len(x) <= 1, single_bow))
+        single_bow = list(filter(lambda x: len(x) == 1, single_bow))
         single_bow = torch.tensor(single_bow).to(device)
         num_words = single_bow.shape[0]
         one_hot_bow = torch.zeros(num_words, tokenizer.vocab_size).to(device)
@@ -449,6 +449,10 @@ def full_text_generation(
 
     else:
         raise Exception("Specify either a bag of words or a discriminator")
+
+    if seed is not None:
+        torch.manual_seed(seed)
+        np.random.seed(seed)
 
     unpert_gen_tok_text, _, _ = generate_text_pplm(
         model=model,
@@ -767,9 +771,10 @@ def run_pplm_example(
             add_special_tokens=True
         )
 
-    print("= Prefix of sentence =")
-    print(tokenizer.decode(tokenized_cond_text))
-    print()
+    if verbosity_level >= REGULAR:
+        print("= Prefix of sentence =")
+        print(tokenizer.decode(tokenized_cond_text))
+        print()
 
     # generate unperturbed and perturbed texts
 
@@ -806,9 +811,9 @@ def run_pplm_example(
 
     if verbosity_level >= REGULAR:
         print("=" * 80)
-    print("= Unperturbed generated text =")
-    print(unpert_gen_text)
-    print()
+        print("= Unperturbed generated text =")
+        print(unpert_gen_text)
+        print()
 
     generated_texts = []
 
@@ -842,9 +847,10 @@ def run_pplm_example(
             else:
                 pert_gen_text = tokenizer.decode(pert_gen_tok_text.tolist()[0])
 
-            print("= Perturbed generated text {} =".format(i + 1))
-            print(pert_gen_text)
-            print()
+            if verbosity_level >= REGULAR:
+                print("= Perturbed generated text {} =".format(i + 1))
+                print(pert_gen_text)
+                print()
         except:
             pass
 
@@ -853,7 +859,8 @@ def run_pplm_example(
             (tokenized_cond_text, pert_gen_tok_text, unpert_gen_tok_text)
         )
 
-    return
+    return [ (tokenizer.decode(tokenized_cond_text), tokenizer.decode(pert_gen_tok_text.tolist()[0]), tokenizer.decode(unpert_gen_tok_text.tolist()[0])) 
+            for (tokenized_cond_text, pert_gen_tok_text, unpert_gen_tok_text) in generated_texts]
 
 def setup_bow_args(args):
     setattr(args, "bag_of_words", "technology")
@@ -970,8 +977,8 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     import random
+    setup_bow_args(args)
     setattr(args, "seed", random.randint(0, 100000000))
-    setattr(args, "seed", 0)
     setattr(args, "pretrained_model", "Helsinki-NLP/opus-mt-de-en")
     setattr(args, "cond_text", "Dies ist ein Test der Domänenanpassung für neuronische maschinelle Übersetzung.")
     # setattr(args, "cond_text", "Ich weiß, das Maschinelles Lernen ist ein schnell wachsender technologisches Bereich.")
@@ -980,8 +987,8 @@ if __name__ == '__main__':
     setattr(args, "no_cuda", True)
     setattr(args, "verbosity", "very_verbose")
 
-    setup_bow_args(args)
     # setup_discriminator_args(args)
-    print (args)
+    if VERBOSITY_LEVELS.get(vars(args)["verbosity"].lower(), REGULAR) >= REGULAR:
+        print (args)
     run_pplm_example(**vars(args))
 
