@@ -84,6 +84,8 @@ DISCRIMINATOR_MODELS_PARAMS = {
     },
 }
 
+debug_log = []
+
 
 def to_var(x, requires_grad=False, volatile=False, device='cuda'):
     if torch.cuda.is_available() and device == 'cuda':
@@ -110,7 +112,23 @@ def top_k_filter(logits, k, probs=False):
         return torch.where(logits < batch_mins,
                            torch.ones_like(logits) * -BIG_CONST,
                            logits)
+    
+def get_top_k_tokens(tokenizer, logits, k):
+    """
+    Masks everything but the k top entries as -infinity (1e10).
+    Used to mask logits such that e^-infinity -> 0 won't contribute to the
+    sum of the denominator.
+    """
+    if k == 0:
+        return []
+    else:
+        result = []
+        values = torch.topk(logits, k)[0]
 
+        for value in values[0].detach():
+            index = (logits == torch.full_like(logits, value)).nonzero(as_tuple=True)[1]
+            result.append((index, value))
+        return [(tokenizer.decode(i), value.tolist()) for (i, value) in result]
 
 def perturb_past(
         past,
@@ -267,6 +285,8 @@ def perturb_past(
             if verbosity_level >= VERY_VERBOSE:
                 print(' kl_loss', kl_loss.data.cpu().numpy() / kl_scale)
             loss += kl_loss
+            loss_list.append(kl_loss)
+
 
         loss_per_iter.append(loss.data.cpu().numpy())
         if verbosity_level >= VERY_VERBOSE:
@@ -385,12 +405,13 @@ def build_bows_one_hot_vectors(bow_indices, tokenizer, device='cuda'):
 
     one_hot_bows_vectors = []
     for single_bow in bow_indices:
-        single_bow = list(filter(lambda x: len(x) == 1, single_bow))
-        single_bow = torch.tensor(single_bow).to(device)
-        num_words = single_bow.shape[0]
-        one_hot_bow = torch.zeros(num_words, tokenizer.vocab_size).to(device)
-        one_hot_bow.scatter_(1, single_bow, 1)
-        one_hot_bows_vectors.append(one_hot_bow)
+        one_hot_vectors = []
+        for word in single_bow:
+            one_hot = torch.zeros(tokenizer.vocab_size).to(device)
+            one_hot.scatter_(0, torch.tensor(word), 1)
+            one_hot = one_hot / len(word)
+            one_hot_vectors.append(one_hot)
+        one_hot_bows_vectors.append(torch.stack(one_hot_vectors))
     return one_hot_bows_vectors
 
 
@@ -642,15 +663,31 @@ def generate_text_pplm(
 
             pert_probs = ((pert_probs ** gm_scale) * (
                     unpert_probs ** (1 - gm_scale)))  # + SMALL_CONST
+            # print("Probability of Tabelle:", pert_probs[0][12209].tolist(), pert_probs[0][2831].tolist()) # Tabelle
+            # print("Probability of Tisch:", pert_probs[0][233].tolist(), pert_probs[0][1097].tolist())
+
             pert_probs = top_k_filter(pert_probs, k=top_k,
                                       probs=True)  # + SMALL_CONST
-
+            debug_log.append((
+                "perturbed",
+                tokenizer.decode(output_so_far.tolist()[0]),
+                get_top_k_tokens(tokenizer, pert_probs, k=top_k)
+            ))
             # rescale
             if torch.sum(pert_probs) <= 1:
                 pert_probs = pert_probs / torch.sum(pert_probs)
 
         else:
+            pert_probs = F.softmax(pert_logits, dim=-1)
+            # print("Probability of Tabelle:", pert_probs[0][12209].tolist(), pert_probs[0][2831].tolist()) # Tabelle
+            # print("Probability of Tisch:", pert_probs[0][233].tolist(), pert_probs[0][1097].tolist())
+
             pert_logits = top_k_filter(pert_logits, k=top_k)  # + SMALL_CONST
+            debug_log.append((
+                "unperturbed",
+                tokenizer.decode(output_so_far.tolist()[0]),
+                get_top_k_tokens(tokenizer, pert_probs, k=top_k)
+            ))
             pert_probs = F.softmax(pert_logits, dim=-1)
 
         # sample or greedy
@@ -823,7 +860,7 @@ def run_pplm_example(
                                                tokenizer)
         for single_bow_list in bow_indices:
             # filtering all words in the list composed of more than 1 token
-            filtered = list(filter(lambda x: len(x) <= 1, single_bow_list))
+            filtered = list(filter(lambda x: len(x) == 1, single_bow_list))
             # w[0] because we are sure w has only 1 item because previous fitler
             bow_word_ids.update(w[0] for w in filtered)
 
@@ -862,14 +899,44 @@ def run_pplm_example(
     return [ (tokenizer.decode(tokenized_cond_text), tokenizer.decode(pert_gen_tok_text.tolist()[0]), tokenizer.decode(unpert_gen_tok_text.tolist()[0])) 
             for (tokenized_cond_text, pert_gen_tok_text, unpert_gen_tok_text) in generated_texts]
 
+def get_probabilites_of_token(logs, token_to_find):
+    result = []
+    for entry in logs:
+        found = False
+        for (word, probability) in entry[2]:
+            if word == token_to_find:
+                result.append(probability)
+                found = True
+                break
+        if not found:
+            result.append(0)
+    return result
+
+def process_debug_log(log, words_to_find):
+    unperturbed = [entry for entry in log if entry[0] == "unperturbed"]
+    perturbed = [entry for entry in log if entry[0] == "perturbed"]
+    
+    all_tokens_in_unperturbed = set([word[0] for entry in unperturbed for word in entry[2]])
+    all_tokens_in_perturbed = set([word[0] for entry in perturbed for word in entry[2]])
+
+    for word in words_to_find: 
+        print(word)
+        print("    Unperturbed")
+        print("        ", get_probabilites_of_token(unperturbed, word))
+        print("    Perturbed")
+        print("        ", get_probabilites_of_token(perturbed, word))
+
+    print(unperturbed[1][2])
+    print(perturbed[1][2])
+
 def setup_bow_args(args):
-    setattr(args, "bag_of_words", "technology")
+    setattr(args, "bag_of_words", "machine_learning")
     setattr(args, "gamma", 1)  # this is used as an exponent, so only 0-1 makes sense to me. If it's above 0, it also makes the text more repetitive, despite the decay. If 0, it doesn't seem to perturb anything.
-    setattr(args, "num_iterations", 6)
+    setattr(args, "num_iterations", 3)
     setattr(args, "num_samples", 1)
-    setattr(args, "stepsize", 0.1)
+    setattr(args, "stepsize", 0.3)
     setattr(args, "window_length", 5)
-    setattr(args, "kl_scale", 0.1) # λ_KL scale of the KL coefficient
+    setattr(args, "kl_scale", 0.3) # λ_KL scale of the KL coefficient
     setattr(args, "gm_scale", 0.95) # γ_gm controls how the perturbed probabilites are mixed with the unperturbed ones. 1 = only perturbed, 0 = only unperturbed
     setattr(args, "sample", False)
     setattr(args, "decay", True)   # important, otherwise it keeps shifting and shifting the hidden state until it starts repeating itself
@@ -979,16 +1046,28 @@ if __name__ == '__main__':
     import random
     setup_bow_args(args)
     setattr(args, "seed", random.randint(0, 100000000))
-    setattr(args, "pretrained_model", "Helsinki-NLP/opus-mt-de-en")
-    setattr(args, "cond_text", "Dies ist ein Test der Domänenanpassung für neuronische maschinelle Übersetzung.")
+    # setattr(args, "pretrained_model", "Helsinki-NLP/opus-mt-de-en")
+    setattr(args, "pretrained_model", "Helsinki-NLP/opus-mt-en-de")
+    setattr(args, "cond_text", "The recipe table is very big.")
+    setattr(args, "bag_of_words", "technology_de")
+
+    # setattr(args, "cond_text", "Dies ist ein Test der Domänenanpassung für neuronische maschinelle Übersetzung.")
     # setattr(args, "cond_text", "Ich weiß, das Maschinelles Lernen ist ein schnell wachsender technologisches Bereich.")
     setattr(args, "length", 50)
     setattr(args, "colorama", True)
     setattr(args, "no_cuda", True)
-    setattr(args, "verbosity", "very_verbose")
+    setattr(args, "verbosity", "verbose")
 
     # setup_discriminator_args(args)
     if VERBOSITY_LEVELS.get(vars(args)["verbosity"].lower(), REGULAR) >= REGULAR:
         print (args)
     run_pplm_example(**vars(args))
 
+    print()
+    print()
+    print()
+    print(debug_log)
+    print()
+    print()
+    print()
+    process_debug_log(debug_log, vars(args)["pretrained_model"], ["Tabelle", "Tisch", "tisch", "der", "die"])
