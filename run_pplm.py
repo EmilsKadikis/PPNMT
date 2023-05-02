@@ -34,6 +34,7 @@ from torch.autograd import Variable
 from tqdm import trange
 from transformers import MarianTokenizer, MarianMTModel
 from pplm_classification_head import ClassificationHead
+from debug_log_processing import print_perturbed_and_unperturbed_word_probabilities
 
 PPLM_BOW = 1
 PPLM_DISCRIM = 2
@@ -753,6 +754,8 @@ def run_pplm_example(
         colorama=False,
         verbosity='regular'
 ):
+    global debug_log
+    debug_log = []
     # set Random seed
     if seed is not None:
         torch.manual_seed(seed)
@@ -897,37 +900,7 @@ def run_pplm_example(
         )
 
     return [ (tokenizer.decode(tokenized_cond_text), tokenizer.decode(pert_gen_tok_text.tolist()[0]), tokenizer.decode(unpert_gen_tok_text.tolist()[0])) 
-            for (tokenized_cond_text, pert_gen_tok_text, unpert_gen_tok_text) in generated_texts]
-
-def get_probabilites_of_token(logs, token_to_find):
-    result = []
-    for entry in logs:
-        found = False
-        for (word, probability) in entry[2]:
-            if word == token_to_find:
-                result.append(probability)
-                found = True
-                break
-        if not found:
-            result.append(0)
-    return result
-
-def process_debug_log(log, words_to_find):
-    unperturbed = [entry for entry in log if entry[0] == "unperturbed"]
-    perturbed = [entry for entry in log if entry[0] == "perturbed"]
-    
-    all_tokens_in_unperturbed = set([word[0] for entry in unperturbed for word in entry[2]])
-    all_tokens_in_perturbed = set([word[0] for entry in perturbed for word in entry[2]])
-
-    for word in words_to_find: 
-        print(word)
-        print("    Unperturbed")
-        print("        ", get_probabilites_of_token(unperturbed, word))
-        print("    Perturbed")
-        print("        ", get_probabilites_of_token(perturbed, word))
-
-    print(unperturbed[1][2])
-    print(perturbed[1][2])
+            for (tokenized_cond_text, pert_gen_tok_text, unpert_gen_tok_text) in generated_texts], debug_log
 
 def setup_bow_args(args):
     setattr(args, "bag_of_words", "machine_learning")
@@ -1070,4 +1043,4 @@ if __name__ == '__main__':
     print()
     print()
     print()
-    process_debug_log(debug_log, vars(args)["pretrained_model"], ["Tabelle", "Tisch", "tisch", "der", "die"])
+    print_perturbed_and_unperturbed_word_probabilities(debug_log, tokenizer=None, words_to_find=["Tabelle", "Tisch", "tisch", "der", "die"])
