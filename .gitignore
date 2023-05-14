@@ -1,3 +1,5 @@
 venv
 .idea
 .vscode
+CoCoA-MT
+__pycache__

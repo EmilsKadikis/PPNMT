@@ -440,6 +440,7 @@ def full_text_generation(
         kl_scale=0.01,
         verbosity_level=REGULAR,
         seed=None,
+        generate_unperturbed=True,
         **kwargs
 ):
     classifier, class_id = get_classifier(
@@ -476,17 +477,20 @@ def full_text_generation(
         torch.manual_seed(seed)
         np.random.seed(seed)
 
-    unpert_gen_tok_text, _, _ = generate_text_pplm(
-        model=model,
-        tokenizer=tokenizer,
-        source_text_tokenized=context,
-        context=None,
-        device=device,
-        length=length,
-        sample=sample,
-        perturb=False,
-        verbosity_level=verbosity_level
-    )
+    if generate_unperturbed:
+        unpert_gen_tok_text, _, _ = generate_text_pplm(
+            model=model,
+            tokenizer=tokenizer,
+            source_text_tokenized=context,
+            context=None,
+            device=device,
+            length=length,
+            sample=sample,
+            perturb=False,
+            verbosity_level=verbosity_level
+        )
+    else:
+        unpert_gen_tok_text = None
     if device == 'cuda':
         torch.cuda.empty_cache()
 
@@ -752,7 +756,8 @@ def run_pplm_example(
         seed=0,
         no_cuda=False,
         colorama=False,
-        verbosity='regular'
+        verbosity='regular',
+        generate_unperturbed=True
 ):
     global debug_log
     debug_log = []
@@ -843,17 +848,19 @@ def run_pplm_example(
         gm_scale=gm_scale,
         kl_scale=kl_scale,
         verbosity_level=verbosity_level,
-        seed=seed
+        seed=seed,
+        generate_unperturbed=generate_unperturbed
     )
 
     # untokenize unperturbed text
-    unpert_gen_text = tokenizer.decode(unpert_gen_tok_text.tolist()[0])
+    if generate_unperturbed:
+        unpert_gen_text = tokenizer.decode(unpert_gen_tok_text.tolist()[0])
 
-    if verbosity_level >= REGULAR:
-        print("=" * 80)
-        print("= Unperturbed generated text =")
-        print(unpert_gen_text)
-        print()
+        if verbosity_level >= REGULAR:
+            print("=" * 80)
+            print("= Unperturbed generated text =")
+            print(unpert_gen_text)
+            print()
 
     generated_texts = []
 
@@ -899,7 +906,7 @@ def run_pplm_example(
             (tokenized_cond_text, pert_gen_tok_text, unpert_gen_tok_text)
         )
 
-    return [ (tokenizer.decode(tokenized_cond_text), tokenizer.decode(pert_gen_tok_text.tolist()[0]), tokenizer.decode(unpert_gen_tok_text.tolist()[0])) 
+    return [ (tokenizer.decode(tokenized_cond_text), tokenizer.decode(pert_gen_tok_text.tolist()[0]), tokenizer.decode(unpert_gen_tok_text.tolist()[0]) if generate_unperturbed else None) 
             for (tokenized_cond_text, pert_gen_tok_text, unpert_gen_tok_text) in generated_texts], debug_log
 
 def setup_bow_args(args):
