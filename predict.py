@@ -19,7 +19,8 @@ def make_predictions(source_texts, output_file_name="predictions.txt", model_nam
     predictions = []
     for text in tqdm(source_texts):
         input_tensor = tokenizer(text, return_tensors="pt").input_ids.to(device)
-        prediction = model.generate(input_tensor)
+        config = GenerationConfig(num_beams=1, do_sample=False)
+        prediction = model.generate(input_tensor, generation_config=config)
         prediction = tokenizer.decode(prediction[0], skip_special_tokens=True, clean_up_tokenization_spaces=True)
         predictions.append(prediction)
 

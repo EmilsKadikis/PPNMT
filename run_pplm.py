@@ -906,7 +906,7 @@ def run_pplm_example(
             (tokenized_cond_text, pert_gen_tok_text, unpert_gen_tok_text)
         )
 
-    return [ (tokenizer.decode(tokenized_cond_text), tokenizer.decode(pert_gen_tok_text.tolist()[0]), tokenizer.decode(unpert_gen_tok_text.tolist()[0]) if generate_unperturbed else None) 
+    return [ (tokenizer.decode(tokenized_cond_text, skip_special_tokens=True, clean_up_tokenization_spaces=True), tokenizer.decode(pert_gen_tok_text.tolist()[0], skip_special_tokens=True, clean_up_tokenization_spaces=True), tokenizer.decode(unpert_gen_tok_text.tolist()[0], skip_special_tokens=True, clean_up_tokenization_spaces=True) if generate_unperturbed else None) 
             for (tokenized_cond_text, pert_gen_tok_text, unpert_gen_tok_text) in generated_texts], debug_log
 
 def setup_bow_args(args):

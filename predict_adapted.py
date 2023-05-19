@@ -4,9 +4,9 @@ from debug_log_processing import *
 from transformers import MarianMTModel, MarianTokenizer
 from tqdm import tqdm
 
-def make_adapted_predictions(source_texts, output_file_name="predictions_adapted.txt", model_name="Helsinki-NLP/opus-mt-en-de", device="cpu"):
+def make_adapted_predictions(source_texts, bag_of_words=None, output_file_name="predictions_adapted.txt", model_name="Helsinki-NLP/opus-mt-en-de", device="cpu"):
     args = dict()
-    args["bag_of_words"] = "technology_de"
+    args["bag_of_words"] = bag_of_words
     args["num_samples"] = 1
     args["sample"] = False
     args["decay"] = True

@@ -29,6 +29,6 @@ if __name__ == "__main__":
     for (metric_name, kwargs) in metrics:
         evaluate_with_metric(predictions, target_texts, metric_name, kwargs)
 
-    adapted_predictions = make_adapted_predictions(source_texts, output_file_name="adapted_predictions.txt", model_name=model_name, device=device)
+    adapted_predictions = make_adapted_predictions(source_texts, bag_of_words="./formality/formal", output_file_name="adapted_predictions.txt", model_name=model_name, device=device)
     for (metric_name, kwargs) in metrics:
-        evaluate_with_metric(predictions, source_texts, metric_name, kwargs)
+        evaluate_with_metric(adapted_predictions, source_texts, metric_name, kwargs)
