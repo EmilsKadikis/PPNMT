@@ -3,3 +3,6 @@ venv
 .vscode
 CoCoA-MT
 __pycache__
+
+experiment_results/*
+!experiment_results/.gitkeep

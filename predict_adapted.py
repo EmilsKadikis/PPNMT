@@ -1,30 +1,38 @@
 from run_pplm import *
-import random
+import os
 from debug_log_processing import *
-from transformers import MarianMTModel, MarianTokenizer
 from tqdm import tqdm
 
-def make_adapted_predictions(source_texts, bag_of_words=None, output_file_name="predictions_adapted.txt", model_name="Helsinki-NLP/opus-mt-en-de", device="cpu"):
+def make_adapted_predictions(source_texts, hyperparameters, verbosity="quiet", device="cpu"):
+    bag_of_words = hyperparameters["bag_of_words"]
+
+    # if the bag of words is passed in directly, save it to a file. Easiest way to not have to change the code too much, which expects a file
+    if type(bag_of_words) is list:
+        with open("tmp_bag_of_words.txt", "w") as f:
+            for word in bag_of_words:
+                f.write(word + "\n")
+        bag_of_words = "tmp_bag_of_words"
+
+
     args = dict()
     args["bag_of_words"] = bag_of_words
-    args["num_samples"] = 1
-    args["sample"] = False
-    args["decay"] = True
+    args["num_samples"] = hyperparameters.get("num_samples", 1)
+    args["sample"] = hyperparameters.get("sample", False)
+    args["decay"] = hyperparameters.get("decay", False)
 
-    args["pretrained_model"] = "Helsinki-NLP/opus-mt-en-de"
-    args["length"] = 100
-    args["colorama"] = True
-    args["no_cuda"] = True
-    args["verbosity"] = "quiet"
-    args["top_k"] = 5
+    args["pretrained_model"] = hyperparameters["translation_model"]
+    args["length"] = hyperparameters.get("length", 100)
+    args["colorama"] = False
+    args["no_cuda"] = device == "cpu"
+    args["verbosity"] = verbosity
+    args["top_k"] = hyperparameters.get("top_k", 5)
 
-    args["gamma"] = 1
-    args["num_iterations"] = 6
-    args["stepsize"] = 0.1
-    args["window_length"] = 5
-    args["kl_scale"] = 0.1
-    args["gm_scale"] = 0.95
-    args["num_iterations"] = 6
+    args["gamma"] = hyperparameters.get("gamma", 1)
+    args["num_iterations"] = hyperparameters.get("num_iterations", 6)
+    args["stepsize"] = hyperparameters.get("stepsize", 0.1)
+    args["window_length"] = hyperparameters.get("window_length", 5)
+    args["kl_scale"] = hyperparameters.get("kl_scale", 0.1)
+    args["gm_scale"] = hyperparameters.get("gm_scale", 0.95)    
     args["generate_unperturbed"] = False
 
     predictions = []
@@ -32,10 +40,8 @@ def make_adapted_predictions(source_texts, bag_of_words=None, output_file_name="
         args["cond_text"] = text
         results, debug_log = run_pplm_example(**args)
         predictions.append(results[0][1])
-
-    # write predictions to file
-    with open(output_file_name, "w") as f:
-        for prediction in predictions:
-            f.write(prediction + "\n")
     
+    if os.path.exists("tmp_bag_of_words.txt"):
+        os.remove("tmp_bag_of_words.txt")
+
     return predictions

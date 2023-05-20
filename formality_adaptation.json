@@ -1,0 +1,29 @@
+{
+    "experiments": [
+        {
+            "experiment_name": "formality_adaptation", 
+            "try_combinations": ["stepsize"],
+            "verbosity": "quiet",
+            
+            "hyperparameters" : {
+                "translation_model": "Helsinki-NLP/opus-mt-en-de",
+                "data_loader": "formality.data_loader",
+                "bag_of_words": ["Sie", "Ihnen", "Ihr", "Ihre", "Herr", "Frau", "en"], 
+                "num_samples": 1,
+                "sample": false,
+                "decay": true,
+                
+                "length": 100,
+                "no_cuda": true,
+                "top_k": 5,
+                
+                "gamma": 1,
+                "num_iterations": 6,
+                "stepsize": [0.01, 0.02, 0.05, 0.8, 0.9],
+                "window_length": 5,
+                "kl_scale": 0.1,
+                "gm_scale": 0.95
+            }
+        }
+    ]
+}
