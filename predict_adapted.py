@@ -2,16 +2,18 @@ from run_pplm import *
 import os
 from debug_log_processing import *
 from tqdm import tqdm
+import random
 
 def make_adapted_predictions(source_texts, hyperparameters, verbosity="quiet", device="cpu"):
     bag_of_words = hyperparameters["bag_of_words"]
 
     # if the bag of words is passed in directly, save it to a file. Easiest way to not have to change the code too much, which expects a file
     if type(bag_of_words) is list:
-        with open("tmp_bag_of_words.txt", "w") as f:
+        bag_of_words_file_name = "tmp_bag_of_words" + str(random.randint(0, 1000000))
+        with open(bag_of_words_file_name+".txt", "w") as f:
             for word in bag_of_words:
                 f.write(word + "\n")
-        bag_of_words = "tmp_bag_of_words"
+        bag_of_words = bag_of_words_file_name
 
 
     args = dict()
@@ -41,7 +43,7 @@ def make_adapted_predictions(source_texts, hyperparameters, verbosity="quiet", d
         results, debug_log = run_pplm_example(**args)
         predictions.append(results[0][1])
     
-    if os.path.exists("tmp_bag_of_words.txt"):
-        os.remove("tmp_bag_of_words.txt")
+    if os.path.exists(bag_of_words+".txt"):
+        os.remove(bag_of_words+".txt")
 
     return predictions
