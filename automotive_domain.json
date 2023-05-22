@@ -1,0 +1,29 @@
+{
+    "experiments": [
+        {
+            "experiment_name": "fgrada_automotive", 
+            "try_combinations": [],
+            "verbosity": "quiet",
+            
+            "hyperparameters" : {
+                "translation_model": "Helsinki-NLP/opus-mt-zh-en",
+                "data_loader": "FGraDA.data_loader_automotive_zh_en",
+                "bag_of_words": "FGraDA/FDMT3.0/dict/auto.dict.en", 
+                "num_samples": 1,
+                "sample": false,
+                "decay": true,
+                
+                "length": 100,
+                "no_cuda": true,
+                "top_k": 5,
+                
+                "gamma": 1,
+                "num_iterations": 6,
+                "stepsize": 0.1,
+                "window_length": 5,
+                "kl_scale": 0.01,
+                "gm_scale": 0.95
+            }
+        }
+    ]
+}

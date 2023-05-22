@@ -17,9 +17,14 @@ parser.add_argument('--infile', nargs=1,
 args = parser.parse_args()
 
 def save_results(experiment_definition, unadapted_predictions, adapted_predictions, unadapted_evaluation_results, adapted_evaluation_results):
+    evaluation_summary = {}
+    for metric in unadapted_evaluation_results.keys():
+        evaluation_summary[metric] = {"unadapted": extract_score(metric, unadapted_evaluation_results[metric]), "adapted": extract_score(metric, adapted_evaluation_results[metric])}
+
     experiment_name = experiment_definition['experiment_name']
     timestamp = time.strftime("%m_%d__%H_%M_%S", time.gmtime())
-    base_path = os.path.join('experiment_results', experiment_name + '_' + timestamp)
+    details = str(evaluation_summary['bertscore']['adapted']) + '-' + str(evaluation_summary['chrf']['adapted'])
+    base_path = os.path.join('experiment_results', experiment_name + '_' + details + '_' + timestamp)
     os.mkdir(base_path)
 
     # save hyperparameters
@@ -42,10 +47,6 @@ def save_results(experiment_definition, unadapted_predictions, adapted_predictio
 
     with open(os.path.join(base_path, "unadapted_evaluation_results.json"), "w") as f:
         f.writelines(json.dumps(unadapted_evaluation_results, indent=4))
-
-    evaluation_summary = {}
-    for metric in unadapted_evaluation_results.keys():
-        evaluation_summary[metric] = {"unadapted": extract_score(metric, unadapted_evaluation_results[metric]), "adapted": extract_score(metric, adapted_evaluation_results[metric])}
     
     with open(os.path.join(base_path, "evaluation_summary.json"), "w") as f:
         f.writelines(json.dumps(evaluation_summary, indent=4))
@@ -53,38 +54,44 @@ def save_results(experiment_definition, unadapted_predictions, adapted_predictio
 
 
 if __name__ == "__main__":
-    args.infile = [open('formality_adaptation.json', 'r')] # uncomment this to run an experiment without having to pass it in the command line
+    experiment_definition_file = None
     if args.infile is not None and args.infile[0] is not None:
         all_experiments = json.load(args.infile[0])['experiments']
-        all_experiments = expand_experiments(all_experiments)
-        for experiment_definition in all_experiments:
-            experiment_name = experiment_definition['experiment_name']
-            hyperparameters = experiment_definition['hyperparameters']
-
-            data_loader = importlib.import_module(hyperparameters["data_loader"])
-            source_texts, target_texts = data_loader.load_data()
-
-            device = experiment_definition.get("device", "cpu")
-            model_name = hyperparameters["translation_model"]
-            predictions = make_predictions(source_texts, output_file_name="predictions.txt", model_name=model_name, device=device)
-            
-            metrics = [("bleu", None),
-                    ("google_bleu", None), 
-                    ("sacrebleu", None), 
-                    ("meteor", None), 
-                    ("chrf", None), 
-                    ("bertscore", {"lang":"de"})]
-
-            unadapted_evaluation_results = {}
-            for (metric_name, kwargs) in metrics:
-                unadapted_evaluation_results[metric_name] = evaluate_with_metric(predictions, target_texts, metric_name, kwargs)
-
-            adapted_predictions = make_adapted_predictions(source_texts, hyperparameters=hyperparameters)
-
-            adapted_evaluation_results = {}
-            for (metric_name, kwargs) in metrics:
-                adapted_evaluation_results[metric_name] = evaluate_with_metric(adapted_predictions, source_texts, metric_name, kwargs)
-                 
-            save_results(experiment_definition, predictions, adapted_predictions, unadapted_evaluation_results, adapted_evaluation_results)
     else:
-        print("Please pass in a .json file defining the experiment to run with --infile <file>")
+        print("No .json file defining the experiment passed in, running 'automotive_domain.json' by default.")
+        all_experiments = json.load(open("automotive_domain.json", "r"))['experiments']
+
+    all_experiments = expand_experiments(all_experiments)
+    for experiment_definition in all_experiments:
+        print("=====================================================")
+        print("Running experiment:")
+        print(experiment_definition)
+
+        experiment_name = experiment_definition['experiment_name']
+        hyperparameters = experiment_definition['hyperparameters']
+
+        data_loader = importlib.import_module(hyperparameters["data_loader"])
+        source_texts, target_texts = data_loader.load_data()
+
+        device = experiment_definition.get("device", "cpu")
+        model_name = hyperparameters["translation_model"]
+        predictions = make_predictions(source_texts, output_file_name="predictions.txt", model_name=model_name, device=device)
+        
+        metrics = [("bleu", None),
+                ("google_bleu", None), 
+                ("sacrebleu", None), 
+                ("meteor", None), 
+                ("chrf", None), 
+                ("bertscore", {"lang":"de"})]
+
+        adapted_predictions, _ = make_adapted_predictions(source_texts, verbosity=experiment_definition.get("verbosity", "quiet"), hyperparameters=hyperparameters, target_texts=target_texts)
+
+        unadapted_evaluation_results = {}
+        for (metric_name, kwargs) in metrics:
+            unadapted_evaluation_results[metric_name] = evaluate_with_metric(predictions, target_texts, metric_name, kwargs)
+
+        adapted_evaluation_results = {}
+        for (metric_name, kwargs) in metrics:
+            adapted_evaluation_results[metric_name] = evaluate_with_metric(adapted_predictions, target_texts, metric_name, kwargs)
+                
+        save_results(experiment_definition, predictions, adapted_predictions, unadapted_evaluation_results, adapted_evaluation_results)

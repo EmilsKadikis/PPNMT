@@ -26,6 +26,7 @@ import argparse
 import json
 from operator import add
 from typing import List, Optional, Tuple, Union
+import os
 
 import numpy as np
 import torch
@@ -389,7 +390,9 @@ def get_bag_of_words_indices(bag_of_words_ids_or_paths: List[str], tokenizer) ->
         List[List[List[int]]]:
     bow_indices = []
     for id_or_path in bag_of_words_ids_or_paths:
-        filepath = './' + id_or_path + '.txt'
+        filepath = './' + id_or_path
+        if not os.path.exists(filepath):
+            filepath = filepath + '.txt'
         with open(filepath, "r") as f:
             words = f.read().strip().split("\n")
         bow_indices.append(
@@ -753,7 +756,7 @@ def run_pplm_example(
         gamma=1.5,
         gm_scale=0.9,
         kl_scale=0.01,
-        seed=0,
+        seed=None,
         no_cuda=False,
         colorama=False,
         verbosity='regular',

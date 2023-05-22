@@ -1,7 +1,10 @@
+.DS_Store
+
 venv
 .idea
 .vscode
 CoCoA-MT
+FDMT3.0
 __pycache__
 
 experiment_results/*
