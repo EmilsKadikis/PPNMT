@@ -1,16 +1,16 @@
 {
     "experiments": [
         {
-            "experiment_name": "fgrada_automotive", 
-            "tags": ["fgrada", "automotive", "zh-en"],
+            "experiment_name": "fgrada_education", 
+            "tags": ["fgrada", "education", "zh-en"],
             "notes": "",
             "try_combinations": [],
             "verbosity": "quiet",
             
             "hyperparameters" : {
                 "translation_model": "Helsinki-NLP/opus-mt-zh-en",
-                "data_loader": "FGraDA.data_loader_automotive_zh_en",
-                "bag_of_words": "FGraDA/FDMT3.0/dict/automotive.dict.en", 
+                "data_loader": "FGraDA.data_loader_education_zh_en",
+                "bag_of_words": "FGraDA/FDMT3.0/dict/education.dict.en", 
                 "num_samples": 1,
                 "sample": false,
                 "decay": true,
@@ -28,16 +28,16 @@
             }
         },
         {
-            "experiment_name": "fgrada_automotive", 
-            "tags": ["fgrada", "automotive", "en-zh"],
+            "experiment_name": "fgrada_education", 
+            "tags": ["fgrada", "education", "en-zh"],
             "notes": "",
             "try_combinations": [],
             "verbosity": "quiet",
             
             "hyperparameters" : {
                 "translation_model": "Helsinki-NLP/opus-mt-en-zh",
-                "data_loader": "FGraDA.data_loader_automotive_en_zh",
-                "bag_of_words": "FGraDA/FDMT3.0/dict/automotive.dict.zh", 
+                "data_loader": "FGraDA.data_loader_education_en_zh",
+                "bag_of_words": "FGraDA/FDMT3.0/dict/education.dict.zh", 
                 "num_samples": 1,
                 "sample": false,
                 "decay": true,
