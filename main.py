@@ -3,6 +3,7 @@ from predict import make_predictions
 from predict_adapted import make_adapted_predictions
 from experiment_helpers import expand_experiments
 from evaluation import evaluate_with_metric, extract_score
+import wandb
 
 import argparse
 import json
@@ -15,6 +16,30 @@ parser.add_argument('--infile', nargs=1,
                     help="JSON file containing details about the experiment to run.",
                     type=argparse.FileType('r'))
 args = parser.parse_args()
+
+def initialize_experiment(experiment_definition):
+    wandb.init(
+        # set the wandb project where this run will be logged
+        project="ppnmt",
+        group=experiment_definition['experiment_name'],
+        tags=experiment_definition.get('tags', None),
+        notes=experiment_definition.get('notes', None),
+        # track hyperparameters and run metadata
+        config=experiment_definition['hyperparameters'],
+    )
+
+def log_results_in_wandb(experiment_definition, data_loader, predictions, adapted_predictions, unadapted_evaluation_results, adapted_evaluation_results):
+    data_loader = importlib.import_module(experiment_definition['hyperparameters']['data_loader'])
+    source_texts, target_texts = data_loader.load_data()
+
+    table = wandb.Table(columns = ["source", "target", "unadapted_translation", "adapted_translation"])
+    [table.add_data(source, target, pred, adapted_pred) for source, target, pred, adapted_pred in zip(source_texts, target_texts, predictions, adapted_predictions)]
+    wandb.log({"translations": table})
+
+    evaluation_summary = {}
+    for metric in unadapted_evaluation_results.keys():
+        evaluation_summary[metric] = {"unadapted": extract_score(metric, unadapted_evaluation_results[metric]), "adapted": extract_score(metric, adapted_evaluation_results[metric])}
+    wandb.log(evaluation_summary)
 
 def save_results(experiment_definition, unadapted_predictions, adapted_predictions, unadapted_evaluation_results, adapted_evaluation_results):
     evaluation_summary = {}
@@ -54,7 +79,6 @@ def save_results(experiment_definition, unadapted_predictions, adapted_predictio
 
 
 if __name__ == "__main__":
-    experiment_definition_file = None
     if args.infile is not None and args.infile[0] is not None:
         all_experiments = json.load(args.infile[0])['experiments']
     else:
@@ -63,6 +87,7 @@ if __name__ == "__main__":
 
     all_experiments = expand_experiments(all_experiments)
     for experiment_definition in all_experiments:
+        initialize_experiment(experiment_definition)
         print("=====================================================")
         print("Running experiment:")
         print(experiment_definition)
@@ -75,7 +100,9 @@ if __name__ == "__main__":
 
         device = experiment_definition.get("device", "cpu")
         model_name = hyperparameters["translation_model"]
-        predictions = make_predictions(source_texts, output_file_name="predictions.txt", model_name=model_name, device=device)
+        generate_unperturbed_predictions = hyperparameters.get("generate_unperturbed_predictions", False)
+        if not generate_unperturbed_predictions:
+            predictions = make_predictions(source_texts, max_length=hyperparameters.get("length", 100), output_file_name="predictions.txt", model_name=model_name, device=device)
         
         metrics = [("bleu", None),
                 ("google_bleu", None), 
@@ -84,8 +111,12 @@ if __name__ == "__main__":
                 ("chrf", None), 
                 ("bertscore", {"lang":"de"})]
 
-        adapted_predictions, _ = make_adapted_predictions(source_texts, verbosity=experiment_definition.get("verbosity", "quiet"), hyperparameters=hyperparameters, target_texts=target_texts)
 
+        adapted_predictions = []
+        adapted_predictions, unperturbed_predictions = make_adapted_predictions(source_texts, verbosity=experiment_definition.get("verbosity", "quiet"), hyperparameters=hyperparameters, target_texts=target_texts, generate_unperturbed_predictions=generate_unperturbed_predictions)
+
+        if generate_unperturbed_predictions:
+            predictions = unperturbed_predictions
         unadapted_evaluation_results = {}
         for (metric_name, kwargs) in metrics:
             unadapted_evaluation_results[metric_name] = evaluate_with_metric(predictions, target_texts, metric_name, kwargs)
@@ -94,4 +125,6 @@ if __name__ == "__main__":
         for (metric_name, kwargs) in metrics:
             adapted_evaluation_results[metric_name] = evaluate_with_metric(adapted_predictions, target_texts, metric_name, kwargs)
                 
+        log_results_in_wandb(experiment_definition, data_loader, predictions, adapted_predictions, unadapted_evaluation_results, adapted_evaluation_results)
         save_results(experiment_definition, predictions, adapted_predictions, unadapted_evaluation_results, adapted_evaluation_results)
+        wandb.finish()

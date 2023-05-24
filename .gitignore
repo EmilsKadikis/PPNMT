@@ -6,6 +6,7 @@ venv
 CoCoA-MT
 FDMT3.0
 __pycache__
+wandb
 
 experiment_results/*
 !experiment_results/.gitkeep
