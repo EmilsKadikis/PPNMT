@@ -1,4 +1,3 @@
-from formality import data_loader as formality_data_loader
 from predict import make_predictions
 from predict_adapted import make_adapted_predictions
 from experiment_helpers import expand_experiments
@@ -28,7 +27,7 @@ def initialize_experiment(experiment_definition):
         config=experiment_definition['hyperparameters'],
     )
 
-def log_results_in_wandb(experiment_definition, data_loader, predictions, adapted_predictions, unadapted_evaluation_results, adapted_evaluation_results):
+def log_results_in_wandb(experiment_definition, data_loader, predictions, adapted_predictions, unadapted_evaluation_results, adapted_evaluation_results, extra_evaluation_results):
     data_loader = importlib.import_module(experiment_definition['hyperparameters']['data_loader'])
     source_texts, target_texts = data_loader.load_data()
 
@@ -39,6 +38,8 @@ def log_results_in_wandb(experiment_definition, data_loader, predictions, adapte
     evaluation_summary = {}
     for metric in unadapted_evaluation_results.keys():
         evaluation_summary[metric] = {"unadapted": extract_score(metric, unadapted_evaluation_results[metric]), "adapted": extract_score(metric, adapted_evaluation_results[metric])}
+
+    evaluation_summary = {**evaluation_summary, **extra_evaluation_results}
     wandb.log(evaluation_summary)
 
 def save_results(experiment_definition, unadapted_predictions, adapted_predictions, unadapted_evaluation_results, adapted_evaluation_results):
@@ -76,7 +77,7 @@ def save_results(experiment_definition, unadapted_predictions, adapted_predictio
     with open(os.path.join(base_path, "evaluation_summary.json"), "w") as f:
         f.writelines(json.dumps(evaluation_summary, indent=4))
 
-
+    return base_path
 
 if __name__ == "__main__":
     if args.infile is not None and args.infile[0] is not None:
@@ -124,7 +125,13 @@ if __name__ == "__main__":
         adapted_evaluation_results = {}
         for (metric_name, kwargs) in metrics:
             adapted_evaluation_results[metric_name] = evaluate_with_metric(adapted_predictions, target_texts, metric_name, kwargs)
-                
-        log_results_in_wandb(experiment_definition, data_loader, predictions, adapted_predictions, unadapted_evaluation_results, adapted_evaluation_results)
+
+        extra_evaluation_results = {}
+        extra_evaluation = experiment_definition.get("extra_evaluation", None)      
+        if extra_evaluation is not None:
+            evaluation = importlib.import_module(extra_evaluation["name"])
+            extra_evaluation_results = evaluation.evaluate(adapted_predictions, predictions, extra_evaluation.get("args", {}))
+
         save_results(experiment_definition, predictions, adapted_predictions, unadapted_evaluation_results, adapted_evaluation_results)
+        log_results_in_wandb(experiment_definition, data_loader, predictions, adapted_predictions, unadapted_evaluation_results, adapted_evaluation_results, extra_evaluation_results)
         wandb.finish()
