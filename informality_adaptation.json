@@ -8,7 +8,7 @@
             "hyperparameters" : {
                 "translation_model": "Helsinki-NLP/opus-mt-en-de",
                 "data_loader": "formality.data_loader",
-                "bag_of_words": ["Sie", "Ihnen", "Ihr", "Ihre", "Herr", "Frau", "en"], 
+                "bag_of_words": ["du", "ihr", "dein"], 
                 "num_samples": 1,
                 "sample": false,
                 "decay": true,
