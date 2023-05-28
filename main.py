@@ -103,7 +103,7 @@ if __name__ == "__main__":
         model_name = hyperparameters["translation_model"]
         generate_unperturbed_predictions = hyperparameters.get("generate_unperturbed_predictions", False)
         if not generate_unperturbed_predictions:
-            predictions = make_predictions(source_texts, max_length=hyperparameters.get("length", 100), output_file_name="predictions.txt", model_name=model_name, device=device)
+            predictions = make_predictions(source_texts, max_length=hyperparameters.get("length", 100), model_name=model_name, device=device)
         
         metrics = [("bleu", None),
                 ("google_bleu", None), 

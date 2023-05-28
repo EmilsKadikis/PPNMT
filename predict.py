@@ -3,7 +3,7 @@ import numpy as np
 from transformers import MarianMTModel, MarianTokenizer, GenerationConfig
 from tqdm import tqdm
 
-def make_predictions(source_texts, max_length=100, output_file_name="predictions.txt", model_name="Helsinki-NLP/opus-mt-en-de", device="cpu"):
+def make_predictions(source_texts, max_length=100, output_file_name=None, model_name="Helsinki-NLP/opus-mt-en-de", device="cpu"):
     # set the device
 
     model = MarianMTModel.from_pretrained(
@@ -25,8 +25,9 @@ def make_predictions(source_texts, max_length=100, output_file_name="predictions
         predictions.append(prediction)
 
     # write predictions to file
-    with open(output_file_name, "w") as f:
-        for prediction in predictions:
-            f.write(prediction + "\n")
+    if output_file_name is not None:
+        with open(output_file_name, "w") as f:
+            for prediction in predictions:
+                f.write(prediction + "\n")
     
     return predictions
