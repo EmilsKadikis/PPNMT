@@ -54,7 +54,7 @@ def make_adapted_predictions(source_texts, hyperparameters, target_texts=None, v
         if generate_unperturbed_predictions:
             predictions_unperturbed.append(results[0][2])
     
-    if os.path.exists(bag_of_words+".txt"):
-        os.remove(bag_of_words+".txt")
+    if os.path.exists(bag_of_words_file_name+".txt"):
+        os.remove(bag_of_words_file_name+".txt")
 
     return predictions, predictions_unperturbed
