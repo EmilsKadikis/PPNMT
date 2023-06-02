@@ -1,0 +1,45 @@
+{
+    "experiments": [
+        {
+            "experiment_name": "formality_adaptation", 
+            "tags": ["formality", "telephony", "en-de"],
+            "notes": "",
+            "try_combinations": [],
+            "verbosity": "regular",
+
+            "extra_evaluation": {
+                "name": "formality.evaluate_formality_accuracy",
+                "args": {
+                    "annotated_formal_texts": "./formality/CoCoA-MT/train/en-de/formality-control.train.telephony.en-de.formal.annotated.de", 
+                    "annotated_informal_texts": "./formality/CoCoA-MT/train/en-de/formality-control.train.telephony.en-de.informal.annotated.de"
+                }
+            },
+            
+            "hyperparameters" : {
+                "translation_model": "Helsinki-NLP/opus-mt-en-de",
+                "data_loader": {
+                    "name":"formality.data_loader_formal_telephony",
+                    "args": {
+                        "source_language": "en",
+                        "target_language": "de"
+                    }
+                },
+                "bag_of_words": ["Sie", "Ihnen", "Ihr"], 
+                "num_samples": 1,
+                "sample": false,
+                "decay": true,
+                
+                "length": 100,
+                "no_cuda": true,
+                "top_k": 5,
+                
+                "gamma": 1,
+                "num_iterations": 6,
+                "stepsize": 0.1,
+                "window_length": 5,
+                "kl_scale": 0.1,
+                "gm_scale": 0.95
+            }
+        }
+    ]
+}

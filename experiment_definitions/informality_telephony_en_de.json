@@ -5,7 +5,7 @@
             "tags": ["formality", "telephony", "en-de"],
             "notes": "",
             "try_combinations": [],
-            "verbosity": "quiet",
+            "verbosity": "regular",
 
             "extra_evaluation": {
                 "name": "formality.evaluate_formality_accuracy",
@@ -17,7 +17,13 @@
             
             "hyperparameters" : {
                 "translation_model": "Helsinki-NLP/opus-mt-en-de",
-                "data_loader": "formality.data_loader_informal_telephony",
+                "data_loader": {
+                    "name":"formality.data_loader_informal_telephony",
+                    "args": {
+                        "source_language": "en",
+                        "target_language": "de"
+                    }
+                },
                 "bag_of_words": ["du", "ihr", "dein"], 
                 "num_samples": 1,
                 "sample": false,

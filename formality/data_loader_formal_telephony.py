@@ -1,20 +1,27 @@
-def load_data():
+import os
+
+def load_data(source_language, target_language):
+    language_pair = source_language + "-" + target_language
+    base_path = "./formality/CoCoA-MT/train/" + language_pair
+    
     target_texts_formal = []
-    with open("./formality/CoCoA-MT/train/en-de/formality-control.train.telephony.en-de.formal.de", "r") as f:
+    with open(base_path + "/formality-control.train.telephony." + language_pair + ".formal." + target_language, "r") as f:
         for line in f:
             target_texts_formal.append(line.strip())
 
-    target_texts_formal_feminine = []
-    with open("./formality/CoCoA-MT/train/en-de/formality-control.train.telephony.en-de.formal.feminine.de", "r") as f:
-        for line in f:
-            target_texts_formal_feminine.append(line.strip())
+    feminine_texts_file = base_path + "/formality-control.train.telephony." + language_pair + ".formal.feminine." + target_language
+    if os.path.exists(feminine_texts_file): 
+        target_texts_formal_feminine = []
+        with open(base_path + "/formality-control.train.telephony." + language_pair + ".formal.feminine." + target_language, "r") as f:
+            for line in f:
+                target_texts_formal_feminine.append(line.strip())
 
-
-    target_texts = list(map(list, zip(target_texts_formal, target_texts_formal_feminine)))
-
+        target_texts = list(map(list, zip(target_texts_formal, target_texts_formal_feminine)))
+    else:
+        target_texts = target_texts_formal
 
     source_texts = []
-    with open("./formality/CoCoA-MT/train/en-de/formality-control.train.telephony.en-de.en", "r") as f:
+    with open(base_path + "/formality-control.train.telephony." + language_pair + "." + source_language, "r") as f:
         for line in f:
             source_texts.append(line.strip())
 

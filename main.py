@@ -18,6 +18,7 @@ args = parser.parse_args()
 
 def initialize_experiment(experiment_definition):
     wandb.init(
+        # mode="disabled",      
         # set the wandb project where this run will be logged
         project="ppnmt",
         group=experiment_definition['experiment_name'],
@@ -27,9 +28,9 @@ def initialize_experiment(experiment_definition):
         config=experiment_definition['hyperparameters'],
     )
 
-def log_results_in_wandb(experiment_definition, data_loader, predictions, adapted_predictions, unadapted_evaluation_results, adapted_evaluation_results, extra_evaluation_results):
-    data_loader = importlib.import_module(experiment_definition['hyperparameters']['data_loader'])
-    source_texts, target_texts = data_loader.load_data()
+def log_results_in_wandb(experiment_definition, predictions, adapted_predictions, unadapted_evaluation_results, adapted_evaluation_results, extra_evaluation_results):
+    source_texts, target_texts = load_data_from_data_loader(experiment_definition["hyperparameters"]["data_loader"])
+
 
     table = wandb.Table(columns = ["source", "target", "unadapted_translation", "adapted_translation"])
     [table.add_data(source, target, pred, adapted_pred) for source, target, pred, adapted_pred in zip(source_texts, target_texts, predictions, adapted_predictions)]
@@ -79,12 +80,23 @@ def save_results(experiment_definition, unadapted_predictions, adapted_predictio
 
     return base_path
 
+def load_data_from_data_loader(data_loader_definition): 
+    # if data_loader_definition is a string, import the module and call load_data
+    if isinstance(data_loader_definition, str):
+        data_loader = importlib.import_module(data_loader_definition)
+        return data_loader.load_data()
+    # if data_loader_definition is a dictionary, call load_data with the arguments in the dictionary
+    elif isinstance(data_loader_definition, dict):
+        data_loader = importlib.import_module(data_loader_definition['name'])
+        return data_loader.load_data(**data_loader_definition['args'])
+
+
 if __name__ == "__main__":
     if args.infile is not None and args.infile[0] is not None:
         all_experiments = json.load(args.infile[0])['experiments']
     else:
-        print("No .json file defining the experiment passed in, running 'automotive_domain.json' by default.")
-        all_experiments = json.load(open("automotive_domain.json", "r"))['experiments']
+        print("No .json file defining the experiment passed in, running 'experiment_definitions/automotive_domain.json' by default.")
+        all_experiments = json.load(open("experiment_definitions/automotive_domain.json", "r"))['experiments']
 
     all_experiments = expand_experiments(all_experiments)
     for experiment_definition in all_experiments:
@@ -96,8 +108,7 @@ if __name__ == "__main__":
         experiment_name = experiment_definition['experiment_name']
         hyperparameters = experiment_definition['hyperparameters']
 
-        data_loader = importlib.import_module(hyperparameters["data_loader"])
-        source_texts, target_texts = data_loader.load_data()
+        source_texts, target_texts = load_data_from_data_loader(hyperparameters["data_loader"])
 
         device = experiment_definition.get("device", "cpu")
         model_name = hyperparameters["translation_model"]
@@ -133,5 +144,5 @@ if __name__ == "__main__":
             extra_evaluation_results = evaluation.evaluate(adapted_predictions, predictions, extra_evaluation.get("args", {}))
 
         save_results(experiment_definition, predictions, adapted_predictions, unadapted_evaluation_results, adapted_evaluation_results)
-        log_results_in_wandb(experiment_definition, data_loader, predictions, adapted_predictions, unadapted_evaluation_results, adapted_evaluation_results, extra_evaluation_results)
+        log_results_in_wandb(experiment_definition, predictions, adapted_predictions, unadapted_evaluation_results, adapted_evaluation_results, extra_evaluation_results)
         wandb.finish()
