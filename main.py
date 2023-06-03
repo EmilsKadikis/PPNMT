@@ -28,26 +28,31 @@ def initialize_experiment(experiment_definition):
         config=experiment_definition['hyperparameters'],
     )
 
-def log_results_in_wandb(experiment_definition, predictions, adapted_predictions, unadapted_evaluation_results, adapted_evaluation_results, extra_evaluation_results):
+def get_evaluation_summary(unadapted_evaluation_results, adapted_evaluation_results):
+    evaluation_summary = {}
+    total_percent_change = 0
+    for metric in unadapted_evaluation_results.keys():
+        unadapted_score = extract_score(metric, unadapted_evaluation_results[metric])
+        adapted_score = extract_score(metric, adapted_evaluation_results[metric])
+        evaluation_summary[metric] = {
+            "unadapted": unadapted_score, 
+            "adapted": adapted_score,
+            "percent_change": (adapted_score - unadapted_score) / unadapted_score
+        }
+        total_percent_change += evaluation_summary[metric]["percent_change"]
+    evaluation_summary["average_percent_change"] = total_percent_change / len(unadapted_evaluation_results.keys())
+    return evaluation_summary
+
+def log_results_in_wandb(experiment_definition, predictions, adapted_predictions, evaluation_summary):
     source_texts, target_texts = load_data_from_data_loader(experiment_definition["hyperparameters"]["data_loader"])
 
 
     table = wandb.Table(columns = ["source", "target", "unadapted_translation", "adapted_translation"])
     [table.add_data(source, target, pred, adapted_pred) for source, target, pred, adapted_pred in zip(source_texts, target_texts, predictions, adapted_predictions)]
     wandb.log({"translations": table})
-
-    evaluation_summary = {}
-    for metric in unadapted_evaluation_results.keys():
-        evaluation_summary[metric] = {"unadapted": extract_score(metric, unadapted_evaluation_results[metric]), "adapted": extract_score(metric, adapted_evaluation_results[metric])}
-
-    evaluation_summary = {**evaluation_summary, **extra_evaluation_results}
     wandb.log(evaluation_summary)
 
-def save_results(experiment_definition, unadapted_predictions, adapted_predictions, unadapted_evaluation_results, adapted_evaluation_results):
-    evaluation_summary = {}
-    for metric in unadapted_evaluation_results.keys():
-        evaluation_summary[metric] = {"unadapted": extract_score(metric, unadapted_evaluation_results[metric]), "adapted": extract_score(metric, adapted_evaluation_results[metric])}
-
+def save_results(experiment_definition, unadapted_predictions, adapted_predictions, unadapted_evaluation_results, adapted_evaluation_results, evaluation_summary):
     experiment_name = experiment_definition['experiment_name']
     timestamp = time.strftime("%m_%d__%H_%M_%S", time.gmtime())
     details = str(evaluation_summary['bertscore']['adapted']) + '-' + str(evaluation_summary['chrf']['adapted'])
@@ -143,6 +148,9 @@ if __name__ == "__main__":
             evaluation = importlib.import_module(extra_evaluation["name"])
             extra_evaluation_results = evaluation.evaluate(adapted_predictions, predictions, extra_evaluation.get("args", {}))
 
-        save_results(experiment_definition, predictions, adapted_predictions, unadapted_evaluation_results, adapted_evaluation_results)
-        log_results_in_wandb(experiment_definition, predictions, adapted_predictions, unadapted_evaluation_results, adapted_evaluation_results, extra_evaluation_results)
+        evaluation_summary = get_evaluation_summary(unadapted_evaluation_results, adapted_evaluation_results)
+        evaluation_summary = {**evaluation_summary, **extra_evaluation_results}
+
+        save_results(experiment_definition, predictions, adapted_predictions, unadapted_evaluation_results, adapted_evaluation_results, evaluation_summary)
+        log_results_in_wandb(experiment_definition, predictions, adapted_predictions, evaluation_summary)
         wandb.finish()
