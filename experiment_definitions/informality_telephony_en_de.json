@@ -5,7 +5,7 @@
             "tags": ["formality", "telephony", "en-de"],
             "notes": "",
             "try_combinations": [],
-            "verbosity": "regular",
+            "verbosity": "quiet",
 
             "extra_evaluation": {
                 "name": "formality.evaluate_formality_accuracy",
