@@ -153,7 +153,8 @@ def perturb_past(
         gamma=1.5,
         kl_scale=0.01,
         device='cuda',
-        verbosity_level=REGULAR
+        verbosity_level=REGULAR,
+        stepsize_decay=None
 ):
     assert source_text_tokenized is not None
     source_text_tensor = torch.LongTensor([source_text_tokenized]).to(device)
@@ -164,6 +165,10 @@ def perturb_past(
         (np.zeros(p.shape).astype("float32"))
         for p in past
     ]
+
+    if stepsize_decay is not None:
+        current_timestep = past[0].shape[3]
+        stepsize = stepsize * stepsize_decay ** (current_timestep - 1)
 
     if accumulated_hidden is None:
         accumulated_hidden = 0
@@ -444,6 +449,7 @@ def full_text_generation(
         verbosity_level=REGULAR,
         seed=None,
         generate_unperturbed=True,
+        stepsize_decay=None,
         **kwargs
 ):
     classifier, class_id = get_classifier(
@@ -530,7 +536,8 @@ def full_text_generation(
             gamma=gamma,
             gm_scale=gm_scale,
             kl_scale=kl_scale,
-            verbosity_level=verbosity_level
+            verbosity_level=verbosity_level,
+            stepsize_decay=stepsize_decay
         )
         pert_gen_tok_texts.append(pert_gen_tok_text)
         if classifier is not None:
@@ -568,7 +575,8 @@ def generate_text_pplm(
         gamma=1.5,
         gm_scale=0.9,
         kl_scale=0.01,
-        verbosity_level=REGULAR
+        verbosity_level=REGULAR,
+        stepsize_decay=None
 ):
     output_so_far = torch.LongTensor([[tokenizer.pad_token_id]]).to(device)
     assert source_text_tokenized is not None
@@ -639,7 +647,8 @@ def generate_text_pplm(
                     gamma=gamma,
                     kl_scale=kl_scale,
                     device=device,
-                    verbosity_level=verbosity_level
+                    verbosity_level=verbosity_level,
+                    stepsize_decay=stepsize_decay
                 )
                 loss_in_time.append(loss_this_iter)
             else:
@@ -760,7 +769,8 @@ def run_pplm_example(
         no_cuda=False,
         colorama=False,
         verbosity='regular',
-        generate_unperturbed=True
+        generate_unperturbed=True,
+        stepsize_decay=None
 ):
     global debug_log
     debug_log = []
@@ -852,7 +862,8 @@ def run_pplm_example(
         kl_scale=kl_scale,
         verbosity_level=verbosity_level,
         seed=seed,
-        generate_unperturbed=generate_unperturbed
+        generate_unperturbed=generate_unperturbed,
+        stepsize_decay=stepsize_decay
     )
 
     # untokenize unperturbed text

@@ -35,6 +35,9 @@ def make_adapted_predictions(source_texts, hyperparameters, target_texts=None, v
     args["window_length"] = hyperparameters.get("window_length", 5)
     args["kl_scale"] = hyperparameters.get("kl_scale", 0.1)
     args["gm_scale"] = hyperparameters.get("gm_scale", 0.95)    
+    args["temperature"] = hyperparameters.get("temperature", 1)    
+    args["grad_length"] = hyperparameters.get("grad_length", 10000)    
+    args["stepsize_decay"] = hyperparameters.get("stepsize_decay", None)    
     args["generate_unperturbed"] = generate_unperturbed_predictions
 
     predictions_unperturbed = []
