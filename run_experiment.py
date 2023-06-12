@@ -49,7 +49,7 @@ def run_stepsize_experiment():
                 token_probabilities[token].append(get_total_unperturbed_probability_of_token(debug_log, token))
             token_probabilities[token].append(get_total_perturbed_probability_of_token(debug_log, token))
         print()
-        print_perturbed_and_unperturbed_word_probabilities(tokenizer, debug_log, interesting_tokens)
+        print_perturbed_and_unperturbed_word_probabilities(debug_log, interesting_tokens)
         print()
         print()
         save_token_probabilities_as_csv(debug_log, "tabelle_"+str(stepsize))

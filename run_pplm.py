@@ -135,7 +135,7 @@ def get_top_k_tokens(tokenizer, logits, k):
 def perturb_past(
         past,
         model,
-        source_text_tokenized,
+        encoder_hidden_states,
         last,
         unpert_past=None,
         unpert_logits=None,
@@ -156,9 +156,6 @@ def perturb_past(
         verbosity_level=REGULAR,
         stepsize_decay=None
 ):
-    assert source_text_tokenized is not None
-    source_text_tensor = torch.LongTensor([source_text_tokenized]).to(device)
-
     past = [torch.cat((p[0].unsqueeze(0), p[1].unsqueeze(0)), dim=0) for p in past]
     # Generate inital perturbed past
     grad_accumulator = [
@@ -224,8 +221,10 @@ def perturb_past(
         # Compute hidden using perturbed past
         perturbed_past = list(map(add, past, curr_perturbation))
         _, _, _, curr_length, _ = curr_perturbation[0].shape
-        model_output = model(input_ids=source_text_tensor, decoder_input_ids=last, past_key_values=perturbed_past)
-        all_logits, _, all_hidden = model_output.logits, model_output.past_key_values, model_output.decoder_hidden_states
+
+        model_output = model.get_decoder()(input_ids=last, past_key_values=perturbed_past, encoder_hidden_states=encoder_hidden_states)
+        lm_logits = model.lm_head(model_output[0]) + model.final_logits_bias
+        all_logits, _, all_hidden = lm_logits, model_output.past_key_values, model_output.hidden_states
         hidden = all_hidden[-1]
         new_accumulated_hidden = accumulated_hidden + torch.sum(
             hidden,
@@ -237,7 +236,7 @@ def perturb_past(
 
         loss = 0.0
         loss_list = []
-        if loss_type == PPLM_BOW or loss_type == PPLM_BOW_DISCRIM:
+        if loss_type == PPLM_BOW:
             for one_hot_bow in one_hot_bows_vectors:
                 bow_logits = torch.mm(probs, torch.t(one_hot_bow))
                 bow_loss = -torch.log(torch.sum(bow_logits))
@@ -245,36 +244,9 @@ def perturb_past(
                 loss_list.append(bow_loss)
             if verbosity_level >= VERY_VERBOSE:
                 print(" pplm_bow_loss:", loss.data.cpu().numpy())
-
-        if loss_type == PPLM_DISCRIM or loss_type == PPLM_BOW_DISCRIM:
-            ce_loss = torch.nn.CrossEntropyLoss()
-            # TODO why we need to do this assignment and not just using unpert_past? (Sumanth)
-            curr_unpert_past = unpert_past
-            curr_probs = torch.unsqueeze(probs, dim=1)
-            wte = model.resize_token_embeddings()
-            for _ in range(horizon_length):
-                inputs_embeds = torch.matmul(curr_probs, wte.weight.data)
-                model_output = model(
-                    input_ids=source_text_tensor,
-                    past_key_values=curr_unpert_past,
-                    decoder_inputs_embeds=inputs_embeds
-                )
-                _, curr_unpert_past, curr_all_hidden = model_output.logits, model_output.past_key_values, model_output.decoder_hidden_states
-                curr_hidden = curr_all_hidden[-1]
-                new_accumulated_hidden = new_accumulated_hidden + torch.sum(
-                    curr_hidden, dim=1)
-
-            prediction = classifier(new_accumulated_hidden /
-                                    (curr_length + 1 + horizon_length))
-
-            label = torch.tensor(prediction.shape[0] * [class_label],
-                                 device=device,
-                                 dtype=torch.long)
-            discrim_loss = ce_loss(prediction, label)
-            if verbosity_level >= VERY_VERBOSE:
-                print(" pplm_discrim_loss:", discrim_loss.data.cpu().numpy())
-            loss += discrim_loss
-            loss_list.append(discrim_loss)
+        else:
+            raise ValueError("Unsupported loss type selected")
+            
 
         kl_loss = 0.0
         if kl_scale > 0.0:
@@ -629,7 +601,7 @@ def generate_text_pplm(
                 pert_past, _, grad_norms, loss_this_iter = perturb_past(
                     past,
                     model,
-                    source_text_tokenized,
+                    model_output.encoder_last_hidden_state,
                     last,
                     unpert_past=unpert_past,
                     unpert_logits=unpert_logits,
@@ -1039,7 +1011,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
     import random
     setup_bow_args(args)
-    setattr(args, "seed", random.randint(0, 100000000))
+    setattr(args, "seed", 0)#random.randint(0, 100000000))
     # setattr(args, "pretrained_model", "Helsinki-NLP/opus-mt-de-en")
     setattr(args, "pretrained_model", "Helsinki-NLP/opus-mt-en-de")
     setattr(args, "cond_text", "The recipe table is very big.")
@@ -1064,4 +1036,4 @@ if __name__ == '__main__':
     print()
     print()
     print()
-    print_perturbed_and_unperturbed_word_probabilities(debug_log, tokenizer=None, words_to_find=["Tabelle", "Tisch", "tisch", "der", "die"])
+    print_perturbed_and_unperturbed_word_probabilities(debug_log, words_to_find=["Tabelle", "Tisch", "tisch", "der", "die"])

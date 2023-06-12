@@ -6,7 +6,7 @@ import random
 
 def make_adapted_predictions(source_texts, hyperparameters, target_texts=None, verbosity="quiet", device="cpu", generate_unperturbed_predictions=False):
     bag_of_words = hyperparameters["bag_of_words"]
-
+    bag_of_words_file_name = None
     # if the bag of words is passed in directly, save it to a file. Easiest way to not have to change the code too much, which expects a file
     if type(bag_of_words) is list:
         bag_of_words_file_name = "tmp_bag_of_words" + str(random.randint(0, 1000000))
@@ -57,7 +57,7 @@ def make_adapted_predictions(source_texts, hyperparameters, target_texts=None, v
         if generate_unperturbed_predictions:
             predictions_unperturbed.append(results[0][2])
     
-    if os.path.exists(bag_of_words_file_name+".txt"):
+    if bag_of_words_file_name is not None and os.path.exists(bag_of_words_file_name+".txt"):
         os.remove(bag_of_words_file_name+".txt")
 
     return predictions, predictions_unperturbed

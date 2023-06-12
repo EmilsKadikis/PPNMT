@@ -11,7 +11,7 @@ def get_probabilites_of_token(logs, token_to_find):
             result.append(0)
     return result
 
-def print_perturbed_and_unperturbed_word_probabilities(tokenizer, log, words_to_find): 
+def print_perturbed_and_unperturbed_word_probabilities(log, words_to_find): 
     unperturbed = [entry for entry in log if entry[0] == "unperturbed"]
     perturbed = [entry for entry in log if entry[0] == "perturbed"]
     
