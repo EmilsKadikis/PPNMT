@@ -10,7 +10,7 @@
             "hyperparameters" : {
                 "translation_model": "Helsinki-NLP/opus-mt-zh-en",
                 "data_loader": "FGraDA.data_loader_automotive_zh_en",
-                "bag_of_words": "FGraDA/FDMT3.0/dict/automotive.dict.en", 
+                "bag_of_words": "FGraDA/FDMT3.0/dict/auto.dict.en", 
                 "num_samples": 1,
                 "sample": false,
                 "decay": true,
@@ -24,7 +24,8 @@
                 "stepsize": 0.1,
                 "window_length": 5,
                 "kl_scale": 0.01,
-                "gm_scale": 0.95
+                "gm_scale": 0.95,
+                "grad_length": 8
             }
         },
         {
@@ -37,7 +38,7 @@
             "hyperparameters" : {
                 "translation_model": "Helsinki-NLP/opus-mt-en-zh",
                 "data_loader": "FGraDA.data_loader_automotive_en_zh",
-                "bag_of_words": "FGraDA/FDMT3.0/dict/automotive.dict.zh", 
+                "bag_of_words": "FGraDA/FDMT3.0/dict/auto.dict.zh", 
                 "num_samples": 1,
                 "sample": false,
                 "decay": true,
@@ -51,7 +52,8 @@
                 "stepsize": 0.1,
                 "window_length": 5,
                 "kl_scale": 0.01,
-                "gm_scale": 0.95
+                "gm_scale": 0.95,
+                "grad_length": 8
             }
         }
     ]

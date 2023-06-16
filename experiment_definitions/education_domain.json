@@ -24,7 +24,8 @@
                 "stepsize": 0.1,
                 "window_length": 5,
                 "kl_scale": 0.01,
-                "gm_scale": 0.95
+                "gm_scale": 0.95,
+                "grad_length": 8
             }
         },
         {
@@ -51,7 +52,8 @@
                 "stepsize": 0.1,
                 "window_length": 5,
                 "kl_scale": 0.01,
-                "gm_scale": 0.95
+                "gm_scale": 0.95,
+                "grad_length": 8
             }
         }
     ]
