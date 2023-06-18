@@ -143,6 +143,7 @@ def perturb_past(
         grad_norms=None,
         stepsize=0.01,
         one_hot_bows_vectors=None,
+        one_hot_negative_bows_vectors=None,
         classifier=None,
         class_label=None,
         loss_type=0,
@@ -240,6 +241,11 @@ def perturb_past(
             for one_hot_bow in one_hot_bows_vectors:
                 bow_logits = torch.mm(probs, torch.t(one_hot_bow))
                 bow_loss = -torch.log(torch.sum(bow_logits))
+                loss += bow_loss
+                loss_list.append(bow_loss)
+            for one_hot_bow in one_hot_negative_bows_vectors:
+                bow_logits = torch.mm(probs, torch.t(one_hot_bow))
+                bow_loss = torch.log(torch.sum(bow_logits))  # The loss here has the oppsoite sign
                 loss += bow_loss
                 loss_list.append(bow_loss)
             if verbosity_level >= VERY_VERBOSE:
@@ -403,6 +409,7 @@ def full_text_generation(
         num_samples=1,
         device="cuda",
         bag_of_words=None,
+        negative_bag_of_words=None,
         discrim=None,
         class_label=None,
         length=100,
@@ -434,6 +441,10 @@ def full_text_generation(
     if bag_of_words:
         bow_indices = get_bag_of_words_indices(bag_of_words.split(";"),
                                                tokenizer)
+    negative_bow_indices = []
+    if negative_bag_of_words:
+        negative_bow_indices = get_bag_of_words_indices(negative_bag_of_words.split(";"),
+                                               tokenizer)
 
     if bag_of_words and classifier:
         loss_type = PPLM_BOW_DISCRIM
@@ -441,7 +452,7 @@ def full_text_generation(
             print("Both PPLM-BoW and PPLM-Discrim are on. "
                   "This is not optimized.")
 
-    elif bag_of_words:
+    elif bag_of_words or negative_bag_of_words:
         loss_type = PPLM_BOW
         if verbosity_level >= REGULAR:
             print("Using PPLM-BoW")
@@ -492,6 +503,7 @@ def full_text_generation(
             device=device,
             perturb=True,
             bow_indices=bow_indices,
+            negative_bow_indices=negative_bow_indices,
             classifier=classifier,
             class_label=class_id,
             loss_type=loss_type,
@@ -531,6 +543,7 @@ def generate_text_pplm(
         device="cuda",
         perturb=True,
         bow_indices=None,
+        negative_bow_indices=None,
         classifier=None,
         class_label=None,
         loss_type=0,
@@ -554,8 +567,8 @@ def generate_text_pplm(
     assert source_text_tokenized is not None
     source_text_tensor = torch.LongTensor([source_text_tokenized]).to(device)
     # collect one hot vectors for bags of words
-    one_hot_bows_vectors = build_bows_one_hot_vectors(bow_indices, tokenizer,
-                                                      device)
+    one_hot_bows_vectors = build_bows_one_hot_vectors(bow_indices, tokenizer, device)
+    one_hot_negative_bows_vectors = build_bows_one_hot_vectors(negative_bow_indices, tokenizer, device)
 
     grad_norms = None
     last = None
@@ -609,6 +622,7 @@ def generate_text_pplm(
                     grad_norms=grad_norms,
                     stepsize=current_stepsize,
                     one_hot_bows_vectors=one_hot_bows_vectors,
+                    one_hot_negative_bows_vectors=one_hot_negative_bows_vectors,
                     classifier=classifier,
                     class_label=class_label,
                     loss_type=loss_type,
@@ -720,6 +734,7 @@ def run_pplm_example(
         uncond=False,
         num_samples=1,
         bag_of_words=None,
+        negative_bag_of_words=None,
         discrim=None,
         discrim_weights=None,
         discrim_meta=None,
@@ -817,6 +832,7 @@ def run_pplm_example(
         device=device,
         num_samples=num_samples,
         bag_of_words=bag_of_words,
+        negative_bag_of_words=negative_bag_of_words,
         discrim=discrim,
         class_label=class_label,
         length=length,
@@ -861,32 +877,7 @@ def run_pplm_example(
             bow_word_ids.update(w[0] for w in filtered)
 
     # iterate through the perturbed texts
-    for i, pert_gen_tok_text in enumerate(pert_gen_tok_texts):
-        try:
-            # untokenize unperturbed text
-            if colorama:
-                import colorama
-
-                pert_gen_text = ''
-                for word_id in pert_gen_tok_text.tolist()[0]:
-                    if word_id in bow_word_ids:
-                        pert_gen_text += '{}{}{}'.format(
-                            colorama.Fore.RED,
-                            tokenizer.decode([word_id]),
-                            colorama.Style.RESET_ALL
-                        )
-                    else:
-                        pert_gen_text += tokenizer.decode([word_id])
-            else:
-                pert_gen_text = tokenizer.decode(pert_gen_tok_text.tolist()[0])
-
-            if verbosity_level >= REGULAR:
-                print("= Perturbed generated text {} =".format(i + 1))
-                print(pert_gen_text)
-                print()
-        except:
-            pass
-
+    for pert_gen_tok_text in pert_gen_tok_texts:
         # keep the prefix, perturbed seq, original seq for each index
         generated_texts.append(
             (tokenized_cond_text, pert_gen_tok_text, unpert_gen_tok_text)
