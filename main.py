@@ -31,16 +31,26 @@ def initialize_experiment(experiment_definition):
 def get_evaluation_summary(unadapted_evaluation_results, adapted_evaluation_results):
     evaluation_summary = {}
     total_percent_change = 0
+    amount_of_metrics_used = 0
     for metric in unadapted_evaluation_results.keys():
         unadapted_score = extract_score(metric, unadapted_evaluation_results[metric])
         adapted_score = extract_score(metric, adapted_evaluation_results[metric])
-        evaluation_summary[metric] = {
-            "unadapted": unadapted_score, 
-            "adapted": adapted_score,
-            "percent_change": (adapted_score - unadapted_score) / unadapted_score
-        }
-        total_percent_change += evaluation_summary[metric]["percent_change"]
-    evaluation_summary["average_percent_change"] = total_percent_change / len(unadapted_evaluation_results.keys())
+        if unadapted_score == 0 or adapted_score == 0:
+            print("Warning: unadapted score or adapted score for metric " + metric + " is 0, ignoring it for evaluation summary.")
+            evaluation_summary[metric] = {
+                    "unadapted": unadapted_score, 
+                    "adapted": adapted_score,
+                    "percent_change": 0
+                }
+        else:
+            evaluation_summary[metric] = {
+                "unadapted": unadapted_score, 
+                "adapted": adapted_score,
+                "percent_change": (adapted_score - unadapted_score) / unadapted_score
+            }
+            amount_of_metrics_used += 1
+            total_percent_change += evaluation_summary[metric]["percent_change"]
+    evaluation_summary["average_percent_change"] = total_percent_change / amount_of_metrics_used
     return evaluation_summary
 
 def log_results_in_wandb(experiment_definition, predictions, adapted_predictions, evaluation_summary):
