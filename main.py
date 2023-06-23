@@ -54,8 +54,12 @@ def get_evaluation_summary(unadapted_evaluation_results, adapted_evaluation_resu
     return evaluation_summary
 
 def log_results_in_wandb(experiment_definition, predictions, adapted_predictions, evaluation_summary):
-    source_texts, target_texts = load_data_from_data_loader(experiment_definition["hyperparameters"]["data_loader"])
+    source_texts, target_texts, positive_bag_of_words, negative_bag_of_words = load_data_from_data_loader(experiment_definition["hyperparameters"]["data_loader"])
 
+    if positive_bag_of_words is not None:
+        wandb.log({"positive_bag_of_words": positive_bag_of_words})
+    if negative_bag_of_words is not None:
+        wandb.log({"negative_bag_of_words": negative_bag_of_words})
 
     table = wandb.Table(columns = ["source", "target", "unadapted_translation", "adapted_translation"])
     [table.add_data(source, target, pred, adapted_pred) for source, target, pred, adapted_pred in zip(source_texts, target_texts, predictions, adapted_predictions)]
@@ -123,10 +127,14 @@ if __name__ == "__main__":
         experiment_name = experiment_definition['experiment_name']
         hyperparameters = experiment_definition['hyperparameters']
 
-        source_texts, target_texts = load_data_from_data_loader(hyperparameters["data_loader"])
+        source_texts, target_texts, positive_bag_of_words, negative_bag_of_words = load_data_from_data_loader(hyperparameters["data_loader"])
 
         device = experiment_definition.get("device", "cpu")
         model_name = hyperparameters["translation_model"]
+        if positive_bag_of_words is not None:
+            hyperparameters["bag_of_words"] = positive_bag_of_words
+        if negative_bag_of_words is not None:
+            hyperparameters["negative_bag_of_words"] = negative_bag_of_words
         generate_unperturbed_predictions = hyperparameters.get("generate_unperturbed_predictions", False)
         if not generate_unperturbed_predictions:
             predictions = make_predictions(source_texts, max_length=hyperparameters.get("length", 100), model_name=model_name, device=device)

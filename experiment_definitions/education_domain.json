@@ -9,36 +9,17 @@
             
             "hyperparameters" : {
                 "translation_model": "Helsinki-NLP/opus-mt-zh-en",
-                "data_loader": "FGraDA.data_loader_education_zh_en",
-                "bag_of_words": "FGraDA/FDMT3.0/dict/education.dict.en", 
-                "num_samples": 1,
-                "sample": false,
-                "decay": true,
-                
-                "length": 100,
-                "no_cuda": true,
-                "top_k": 5,
-                
-                "gamma": 1,
-                "num_iterations": 6,
-                "stepsize": 0.1,
-                "window_length": 5,
-                "kl_scale": 0.01,
-                "gm_scale": 0.95,
-                "grad_length": 8
-            }
-        },
-        {
-            "experiment_name": "fgrada_education", 
-            "tags": ["fgrada", "education", "en-zh"],
-            "notes": "",
-            "try_combinations": [],
-            "verbosity": "quiet",
-            
-            "hyperparameters" : {
-                "translation_model": "Helsinki-NLP/opus-mt-en-zh",
-                "data_loader": "FGraDA.data_loader_education_en_zh",
-                "bag_of_words": "FGraDA/FDMT3.0/dict/education.dict.zh", 
+                "data_loader": {
+                    "name":"FGraDA.data_loader",
+                    "args": {
+                        "source_language": "zh",
+                        "target_language": "en",
+                        "split": "dev",
+                        "domain": "education",
+                        "bag_of_words_type": "dict",
+                        "use_negative_bags_of_words": true
+                    }
+                },
                 "num_samples": 1,
                 "sample": false,
                 "decay": true,

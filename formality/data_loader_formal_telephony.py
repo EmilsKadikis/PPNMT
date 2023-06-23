@@ -25,4 +25,4 @@ def load_data(source_language, target_language):
         for line in f:
             source_texts.append(line.strip())
 
-    return source_texts, target_texts
+    return source_texts, target_texts, None, None
