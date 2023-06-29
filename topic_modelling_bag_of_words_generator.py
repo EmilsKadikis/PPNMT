@@ -13,7 +13,7 @@ def _preprocess_text(text):
     tokens = [token for token in tokens if token.isalpha() and token not in stop_words]
     return " ".join(tokens)
 
-def generate_bags_of_words(domain_texts):
+def generate_bags_of_words(domain_texts, score_threshold = None):
     all_texts = [text for domain in domain_texts for text in domain]        
     processed_data = [_preprocess_text(sentence) for sentence in all_texts]
 
@@ -26,7 +26,8 @@ def generate_bags_of_words(domain_texts):
         topic = topic_model.get_topic(i)
         bag_of_words = []
         for (word, score) in topic:
-            bag_of_words.append(word)
+            if word != '' and (score_threshold is None or score >= score_threshold):
+                bag_of_words.append(word)
         bags_of_words.append(bag_of_words)
 
     return bags_of_words
