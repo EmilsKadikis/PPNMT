@@ -4,7 +4,9 @@ venv
 .idea
 .vscode
 CoCoA-MT
+ASPEC/ASPEC
 FDMT3.0
+Arabic-parallel-gender-corpus-v-2.0
 __pycache__
 wandb
 
