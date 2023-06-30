@@ -30,7 +30,7 @@ def load_data(source_language, target_language, split, domain, bag_of_words_type
 
 def _load_domain_texts(domain, split, language):
     base_path = f"./FGraDA/FDMT3.0/{split}/" 
-    base_domain_path = base_path + domain + ".dev."
+    base_domain_path = base_path + domain + f".{split}."
     texts = []
     with open(base_domain_path + language, "r") as f:
         for line in f:
