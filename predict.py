@@ -1,7 +1,4 @@
-import torch
-import numpy as np
 from transformers import MarianMTModel, MarianTokenizer, GenerationConfig
-from tqdm import tqdm
 
 def make_predictions(source_texts, max_length=100, output_file_name=None, model_name="Helsinki-NLP/opus-mt-en-de", device="cpu"):
     # set the device
