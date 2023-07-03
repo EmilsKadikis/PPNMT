@@ -18,6 +18,8 @@ def expand_experiments(experiments):
     For every experiment that has 'try_combinations': [column_a, column_b, ...] defined, 
     expands it into multiple separate experiments, trying all possible combinations of the values given in column_a, column_b, ....
     """
+    if type(experiments) is not list:
+        experiments = [experiments]
     expanded_experiments = []
     for experiment_definition in experiments:
         if 'try_combinations' in experiment_definition:
