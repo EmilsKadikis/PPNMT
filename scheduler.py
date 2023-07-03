@@ -53,7 +53,7 @@ class NewFileHandler(FileSystemEventHandler):
         print(f"Scheduling experiment: {json_file}")        
         scheduled += 1
         command = ['python', self.script_path, '--infile', json_file]
-        future = self.thread_pool.submit(subprocess.run, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        future = self.thread_pool.submit(subprocess.run, command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         future.add_done_callback(self.on_experiment_done)
 
     def on_experiment_done(self, params):

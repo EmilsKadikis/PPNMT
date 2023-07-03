@@ -10,5 +10,7 @@ Arabic-parallel-gender-corpus-v-2.0
 __pycache__
 wandb
 
+
 experiment_results/*
+models
 !experiment_results/.gitkeep
