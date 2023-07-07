@@ -90,7 +90,8 @@ def start_experiment_scheduler(script_path, folder_path, process_limit):
 
 if __name__ == '__main__':
     script_path = 'main.py'
-    folder_path = './test'
-    process_limit = 3  # Set the desired process limit
+    folder_path = './experiments'
+    os.makedirs(folder_path, exist_ok=True)
+    process_limit = 3 
 
     start_experiment_scheduler(script_path, folder_path, process_limit)
