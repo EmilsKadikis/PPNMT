@@ -29,10 +29,11 @@ def _build_bows_one_hot_vectors(bow_indices, tokenizer, device='cpu'):
     one_hot_vectors = []
     for word in bow_indices:
         one_hot = torch.zeros(tokenizer.vocab_size).to(device)
-        one_hot.scatter_(0, torch.tensor(word), 1)
+        one_hot.scatter_(0, torch.tensor(word).to(device), 1)
         one_hot = one_hot / len(word)
         one_hot_vectors.append(one_hot)
-    return one_hot_vectors
+    # convert list to tensors before returning
+    return torch.stack(one_hot_vectors)
 
 if __name__ == '__main__':
     from transformers import MarianTokenizer

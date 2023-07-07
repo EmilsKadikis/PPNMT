@@ -7,6 +7,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 import torch
 import torch.distributed as dist
 from torch import nn
+import torch.nn.functional as F
 
 
 from transformers.pytorch_utils import torch_int_div
@@ -20,18 +21,15 @@ from transformers import (
     MaxLengthCriteria,
 )
 
-from perturb_past import perturb_past
+from perturb_past import perturb_past, PerturbationArgs
 
 
 logger = logging.get_logger(__name__)
 
-class PerturbableGenerationMixin(GenerationMixin):
-    def set_positive_bag_of_words(self, bag_of_words: List[torch.FloatTensor]):
-        self.positive_bag_of_words = bag_of_words
-        
-
+class PerturbableGenerationMixin(GenerationMixin):        
     def generate(
         self,
+        perturbation_args: PerturbationArgs(),
         inputs: Optional[torch.Tensor] = None,
         generation_config: Optional[GenerationConfig] = None,
         logits_processor: Optional[LogitsProcessorList] = None,
@@ -187,6 +185,7 @@ class PerturbableGenerationMixin(GenerationMixin):
         if self.config.is_encoder_decoder and "encoder_outputs" not in model_kwargs:
             # if model is encoder decoder encoder_outputs are created
             # and added to `model_kwargs`
+            model_kwargs['output_hidden_states'] = True
             model_kwargs = self._prepare_encoder_decoder_kwargs_for_generation(
                 inputs_tensor, model_kwargs, model_input_name
             )
@@ -327,6 +326,7 @@ class PerturbableGenerationMixin(GenerationMixin):
             # 11. run greedy search
             return self.greedy_search(
                 input_ids,
+                perturbation_args,
                 logits_processor=logits_processor,
                 stopping_criteria=stopping_criteria,
                 pad_token_id=generation_config.pad_token_id,
@@ -500,6 +500,7 @@ class PerturbableGenerationMixin(GenerationMixin):
     def greedy_search(
         self,
         input_ids: torch.LongTensor,
+        perturbation_args: PerturbationArgs,
         logits_processor: Optional[LogitsProcessorList] = None,
         stopping_criteria: Optional[StoppingCriteriaList] = None,
         max_length: Optional[int] = None,
@@ -635,15 +636,13 @@ class PerturbableGenerationMixin(GenerationMixin):
         cross_attentions = () if (return_dict_in_generate and output_attentions) else None
         decoder_hidden_states = () if (return_dict_in_generate and output_hidden_states) else None
 
-        # if model is an encoder-decoder, retrieve encoder attention weights and hidden states
-        if return_dict_in_generate and self.config.is_encoder_decoder:
-            encoder_attentions = model_kwargs["encoder_outputs"].get("attentions") if output_attentions else None
-            encoder_hidden_states = (
-                model_kwargs["encoder_outputs"].get("hidden_states") if output_hidden_states else None
-            )
+        encoder_hidden_states = (
+            model_kwargs["encoder_outputs"].get("hidden_states")
+        )
 
         # keep track of which sequences are already finished
         unfinished_sequences = input_ids.new(input_ids.shape[0]).fill_(1)
+        next_tokens = None
 
         this_peer_finished = False  # used by synced_gpus only
         while True:
@@ -661,7 +660,7 @@ class PerturbableGenerationMixin(GenerationMixin):
             model_inputs = self.prepare_inputs_for_generation(input_ids, **model_kwargs)
 
             # forward pass to get next token
-            outputs = self(
+            unperturbed_outputs = self(
                 **model_inputs,
                 return_dict=True,
                 output_attentions=output_attentions,
@@ -669,7 +668,14 @@ class PerturbableGenerationMixin(GenerationMixin):
             )
 
             # do perturbations
-            perturbed_past_key_values = perturb_past(outputs.past_key_values, self)
+            perturbed_past_key_values = perturb_past(
+                past=unperturbed_outputs.past_key_values, 
+                last_tokens=next_tokens,
+                encoder_hidden_states=encoder_hidden_states,
+                model=self,
+                unperturbed_logits=unperturbed_outputs.logits,
+                args=perturbation_args
+            )
 
             # remove "past_key_values" from model_inputs
             model_inputs.pop("past_key_values", None)
@@ -682,11 +688,20 @@ class PerturbableGenerationMixin(GenerationMixin):
                 output_hidden_states=output_hidden_states,
             )
 
+            perturbed_logits = outputs.logits[:, -1, :] / perturbation_args.temperature
+            perturbed_probs = F.softmax(perturbed_logits, dim=-1)
+
+            # Fuse perturbed model with original model
+            unperturbed_logits = unperturbed_outputs.logits
+            unperturbed_probs = F.softmax(unperturbed_logits[:, -1, :], dim=-1)
+            final_probs = ((perturbed_probs ** perturbation_args.gm_scale) * (
+                    unperturbed_probs ** (1 - perturbation_args.gm_scale)))
+            final_logits = torch.log(final_probs).unsqueeze(1)
 
             if synced_gpus and this_peer_finished:
                 continue  # don't waste resources running the code we don't need
 
-            next_token_logits = outputs.logits[:, -1, :]
+            next_token_logits = final_logits[:, -1, :]
 
             # pre-process distribution
             next_tokens_scores = logits_processor(input_ids, next_token_logits)

@@ -1,4 +1,3 @@
-Ihre
-Herr
-Frau
-en
+du
+ihr
+dein
