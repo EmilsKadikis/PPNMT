@@ -2,10 +2,13 @@ from typing import List
 import torch
 import os
 
-def get_bag_of_words_vectors(bag_of_words_paths: List[str], tokenizer, device='cpu'):
-    bags_of_words = _load_bags_of_words(bag_of_words_paths)
-    # flatten bags_of_words
-    bag_of_words = [word for bag in bags_of_words for word in bag]
+def get_bag_of_words_vectors(tokenizer, bag_of_words_paths: List[str] = None, bag_of_words: List[str] = None, device='cpu'):
+    if bag_of_words is None and bag_of_words_paths is None:
+        return None
+    if bag_of_words_paths is not None:
+        bags_of_words = _load_bags_of_words(bag_of_words_paths)
+        # flatten bags_of_words
+        bag_of_words = [word for bag in bags_of_words for word in bag]
     bow_indices = [tokenizer.encode(word.strip(), add_special_tokens=False) for word in bag_of_words]
     return _build_bows_one_hot_vectors(bow_indices, tokenizer, device)
 
@@ -38,5 +41,7 @@ def _build_bows_one_hot_vectors(bow_indices, tokenizer, device='cpu'):
 if __name__ == '__main__':
     from transformers import MarianTokenizer
     tokenizer = MarianTokenizer.from_pretrained('Helsinki-NLP/opus-mt-en-de')
-    bows = get_bag_of_words_vectors(['rewrite/test_bow', 'rewrite/test_bow2'], tokenizer)
+    bows = get_bag_of_words_vectors(tokenizer, bag_of_words_paths=['test_bow', 'test_bow2'])
+    print(bows)
+    bows = get_bag_of_words_vectors(tokenizer, bag_of_words=["Sie", "Ihr", "Ihnen"])
     print(bows)

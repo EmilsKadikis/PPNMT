@@ -14,7 +14,7 @@ def make_predictions(source_texts, max_length=100, output_file_name=None, model_
     tokenizer = MarianTokenizer.from_pretrained(model_name)
 
     predictions = []
-    tokenizer_output = tokenizer(source_texts, return_tensors="pt", padding=True)
+    tokenizer_output = tokenizer(source_texts, return_tensors="pt", padding=True).to(device)
     config = GenerationConfig(num_beams=1, do_sample=False, max_length=max_length)
     predictions = model.generate(tokenizer_output.input_ids, attention_mask=tokenizer_output.attention_mask, generation_config=config)
     predictions = tokenizer.batch_decode(predictions, skip_special_tokens=True, clean_up_tokenization_spaces=True)

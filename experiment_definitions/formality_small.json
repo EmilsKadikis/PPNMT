@@ -5,18 +5,17 @@
             "tags": ["formality", "telephony", "en-de", "small"],
             "notes": "",
             "try_combinations": [],
-            "verbosity": "quiet",
+            "device": "mps",
             
             "hyperparameters" : {
                 "translation_model": "Helsinki-NLP/opus-mt-en-de",
                 "data_loader": "formality.small_data_loader",
                 "bag_of_words": ["Sie", "Ihnen", "Ihr"], 
+                "negative_bag_of_words": ["du", "ihr", "dein"],
                 "num_samples": 1,
-                "sample": false,
                 "decay": true,
                 
                 "length": 100,
-                "no_cuda": true,
                 "top_k": 5,
                 
                 "gamma": 1,

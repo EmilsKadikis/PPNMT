@@ -20,8 +20,9 @@ class PerturbationArgs:
         self.gamma = kwargs.pop("gamma", 1)
         self.kl_scale = kwargs.pop("kl_scale", 0.01)
         self.gm_scale = kwargs.pop("gm_scale", 0.95)
-        self.stepsize = kwargs.pop("stepsize", 0.01)
+        self.stepsize = kwargs.pop("stepsize", 0.1)
         self.temperature = kwargs.pop("temperature", 1)
+        # TODO: grad length
 
 def _to_var(x, requires_grad=False, volatile=False, device='cuda'):
     if torch.cuda.is_available() and device == 'cuda':

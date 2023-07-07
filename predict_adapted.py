@@ -1,76 +1,82 @@
-from run_pplm import *
 import os
-from debug_log_processing import *
 from tqdm import tqdm
 import random
+from transformers import MarianTokenizer, GenerationConfig
+from perturbable_marianmt_model import PerturbableMarianMTModel
+from bag_of_words_processor import get_bag_of_words_vectors
+from perturb_past import PerturbationArgs
 
-def make_adapted_predictions(source_texts, hyperparameters, target_texts=None, verbosity="quiet", device="cpu", generate_unperturbed_predictions=False):
-    bag_of_words = hyperparameters.get("bag_of_words", None)
-    bag_of_words_file_name = None
-    # if the bag of words is passed in directly, save it to a file. Easiest way to not have to change the code too much, which expects a file
-    if type(bag_of_words) is list:
-        bag_of_words_file_name = "tmp_bag_of_words" + str(random.randint(0, 1000000)) + ".txt"
-        with open(bag_of_words_file_name, "w") as f:
-            for word in bag_of_words:
-                f.write(word + "\n")
-        bag_of_words = bag_of_words_file_name
+def _get_bags_of_words(hyperparameters, device, tokenizer):
+    positive_bags_of_words = hyperparameters.pop("bag_of_words", None)
+    if type(positive_bags_of_words) is str:
+        positive_bags_of_words_paths = positive_bags_of_words.split(";")
+        positive_bags_of_words = None
+    else:
+        positive_bags_of_words_paths = None
 
-    negative_bag_of_words = hyperparameters.get("negative_bag_of_words", None)
-    negative_bag_of_words_file_name = None
-    # if the bag of words is passed in directly, save it to a file. Easiest way to not have to change the code too much, which expects a file
-    if type(negative_bag_of_words) is list:
-        negative_bag_of_words_file_name = "tmp_bag_of_words" + str(random.randint(0, 1000000)) + ".txt"
-        with open(negative_bag_of_words_file_name, "w") as f:
-            for word in negative_bag_of_words:
-                f.write(word + "\n")
-        negative_bag_of_words = negative_bag_of_words_file_name
+    negative_bags_of_words = hyperparameters.pop("negative_bag_of_words", None)
+    if type(negative_bags_of_words) is str:
+        negative_bags_of_words_paths = negative_bags_of_words.split(";")
+        negative_bags_of_words = None
+    else:
+        negative_bags_of_words_paths = None
 
+    # set up perturbation args
+    positive_bow = get_bag_of_words_vectors(
+        tokenizer, 
+        bag_of_words=positive_bags_of_words, 
+        bag_of_words_paths=positive_bags_of_words_paths, 
+        device=device
+    ) if positive_bags_of_words is not None or positive_bags_of_words_paths is not None else None
 
-    args = dict()
-    args["bag_of_words"] = bag_of_words
-    args["negative_bag_of_words"] = negative_bag_of_words
-    args["num_samples"] = hyperparameters.get("num_samples", 1)
-    args["sample"] = hyperparameters.get("sample", False)
-    args["decay"] = hyperparameters.get("decay", False)
-
-    args["pretrained_model"] = hyperparameters["translation_model"]
-    args["length"] = hyperparameters.get("length", 100)
-    args["colorama"] = False
-    args["no_cuda"] = device == "cpu"
-    args["verbosity"] = "quiet"
-    args["top_k"] = hyperparameters.get("top_k", 5)
-
-    args["gamma"] = hyperparameters.get("gamma", 1)
-    args["num_iterations"] = hyperparameters.get("num_iterations", 6)
-    args["stepsize"] = hyperparameters.get("stepsize", 0.1)
-    args["window_length"] = hyperparameters.get("window_length", 5)
-    args["kl_scale"] = hyperparameters.get("kl_scale", 0.1)
-    args["gm_scale"] = hyperparameters.get("gm_scale", 0.95)    
-    args["temperature"] = hyperparameters.get("temperature", 1)    
-    args["grad_length"] = hyperparameters.get("grad_length", 10000)    
-    args["stepsize_decay"] = hyperparameters.get("stepsize_decay", None)    
-    args["generate_unperturbed"] = generate_unperturbed_predictions
-
-    predictions_unperturbed = []
-    predictions = []
-    for i, text in enumerate(tqdm(source_texts)):
-        args["cond_text"] = text
-        results, debug_log = run_pplm_example(**args)
-        if verbosity != "quiet":
-            print(results[0][0])
-            if target_texts is not None:
-                print("Target:", target_texts[i])
-            if generate_unperturbed_predictions:
-                print("Unperturbed:", results[0][2])
-            print("Perturbed:  ", results[0][1])
-            print()
-        predictions.append(results[0][1])
-        if generate_unperturbed_predictions:
-            predictions_unperturbed.append(results[0][2])
+    negative_bow = get_bag_of_words_vectors(
+        tokenizer, 
+        bag_of_words=negative_bags_of_words, 
+        bag_of_words_paths=negative_bags_of_words_paths, 
+        device=device
+    ) if negative_bags_of_words is not None or negative_bags_of_words_paths is not None else None
     
-    if bag_of_words_file_name is not None and os.path.exists(bag_of_words_file_name):
-        os.remove(bag_of_words_file_name)
-    if negative_bag_of_words_file_name is not None and os.path.exists(negative_bag_of_words_file_name):
-        os.remove(negative_bag_of_words_file_name)
+    return positive_bow,negative_bow
 
-    return predictions, predictions_unperturbed
+def chunk(l, n):
+    for i in range(0, len(l), n): 
+        yield l[i:i + n]
+
+def make_adapted_predictions(source_texts, hyperparameters, device="cpu"):
+    print(f"Using device {device}")
+    pretrained_model = hyperparameters["translation_model"]
+    model = PerturbableMarianMTModel.from_pretrained(
+        pretrained_model,
+        output_hidden_states=True
+    )
+    model.to(device)
+    model.eval()
+
+    # load tokenizer
+    tokenizer = MarianTokenizer.from_pretrained(pretrained_model)
+
+    positive_bow, negative_bow = _get_bags_of_words(hyperparameters, device, tokenizer)
+    args = PerturbationArgs(
+        positive_bag_of_words=positive_bow,
+        negative_bag_of_words=negative_bow,
+        **hyperparameters
+    )
+
+    max_length = hyperparameters.pop("length", 100)
+    # top_k = hyperparameters.pop("top_k", 5)
+
+    predictions = []
+    batches = list(chunk(source_texts, 4))
+    for texts in tqdm(batches):
+        encoded_texts = tokenizer(texts, padding=True, return_tensors="pt")
+        input_ids = encoded_texts.input_ids.to(device) # [batch_size, max_seq_len]
+        attention_mask = encoded_texts.attention_mask.to(device) # [batch_size, max_seq_len]
+        generation_config = GenerationConfig(num_beams=1, do_sample=False, max_new_tokens=max_length-1)
+
+        results = model.generate(args, input_ids, attention_mask=attention_mask, generation_config=generation_config)
+        decoded_results = tokenizer.batch_decode(results, skip_special_tokens=True)
+
+        predictions.extend(decoded_results)
+        print(decoded_results)
+    
+    return predictions
