@@ -643,7 +643,7 @@ class PerturbableGenerationMixin(GenerationMixin):
         # keep track of which sequences are already finished
         unfinished_sequences = input_ids.new(input_ids.shape[0]).fill_(1)
         next_tokens = None
-
+        grad_norms = None
         this_peer_finished = False  # used by synced_gpus only
         while True:
             if synced_gpus:
@@ -668,12 +668,13 @@ class PerturbableGenerationMixin(GenerationMixin):
             )
 
             # do perturbations
-            perturbed_past_key_values = perturb_past(
+            perturbed_past_key_values, grad_norms = perturb_past(
                 past=unperturbed_outputs.past_key_values, 
                 last_tokens=next_tokens,
                 encoder_hidden_states=encoder_hidden_states,
                 model=self,
                 unperturbed_logits=unperturbed_outputs.logits,
+                grad_norms_self_attn=grad_norms,
                 args=perturbation_args
             )
 

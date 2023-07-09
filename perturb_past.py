@@ -105,6 +105,7 @@ def perturb_past(
     encoder_hidden_states: torch.Tensor, # shape [batch, input_len, hidden_size]
     model: PreTrainedModel,
     unperturbed_logits: torch.Tensor, # shape [batch, seq_len, vocab_size]
+    grad_norms_self_attn: List[torch.Tensor],
     args: PerturbationArgs,
 ) -> Tuple[Tuple[torch.Tensor]]:  
     # do perturbation
@@ -148,16 +149,12 @@ def perturb_past(
         _add_kl_loss(loss, probs, unperturbed_logits, args)
         loss.sum().backward(retain_graph=True)
 
-        # if grad_norms_self_attn is not None:
-        #     grad_norms_self_attn = [
-        #         torch.max(grad_norms_self_attn[index], torch.norm(p_.grad * window_mask))
-        #         for index, p_ in enumerate(curr_perturbation_self_attn)
-        #     ]
-        # else:
 
         # Compute gradient norms
+        if grad_norms_self_attn is None:
+            grad_norms_self_attn = torch.zeros(len(curr_perturbation_self_attn), device=device)
         grad_norms_self_attn = [
-            (torch.norm(p_.grad * window_mask) + SMALL_CONST)
+            torch.max(grad_norms_self_attn[index], torch.norm(p_.grad * window_mask))
             for index, p_ in enumerate(curr_perturbation_self_attn)
         ]
 
@@ -180,4 +177,4 @@ def perturb_past(
     # perturbed_past_cross_attn = list(map(add, past_cross_attn, grad_accumulator_cross_attn))
     perturbed_past = [[p_self[0], p_self[1], p_cross[0], p_cross[1]] for p_self, p_cross in zip(perturbed_past_self_attn, past_cross_attn)]
 
-    return perturbed_past
+    return perturbed_past, grad_norms_self_attn
