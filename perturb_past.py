@@ -143,16 +143,16 @@ def perturb_past(
         logits = lm_logits[:, -1, :] # [batch, vocab_size] (takes the logits of the last token)
         probs = F.softmax(logits, dim=-1) # [batch, vocab_size]
 
-        batch = probs.shape[0]
-        loss = torch.zeros(batch).to(device)
+        batch_size = probs.shape[0]
+        loss = torch.zeros(batch_size).to(device)
         _add_bag_of_word_loss(loss, probs, args)
         _add_kl_loss(loss, probs, unperturbed_logits, args)
-        loss.sum().backward(retain_graph=True)
 
+        loss.sum().backward(retain_graph=True)
 
         # Compute gradient norms
         if grad_norms_self_attn is None:
-            grad_norms_self_attn = torch.zeros(len(curr_perturbation_self_attn), device=device)
+            grad_norms_self_attn = [torch.zeros(batch_size, device=device) for _ in curr_perturbation_self_attn]
         grad_norms_self_attn = [
             torch.max(grad_norms_self_attn[index], torch.norm(p_.grad * window_mask))
             for index, p_ in enumerate(curr_perturbation_self_attn)
@@ -161,8 +161,8 @@ def perturb_past(
         # Calculate final gradients
         grad_self_attn = [
             -args.stepsize *
-            (p_.grad * window_mask / grad_norms_self_attn[
-                index] ** args.gamma).data.cpu().numpy()
+            ((p_.grad * window_mask) / grad_norms_self_attn[ #[2, 3, 8, 1, 64] / [3]
+                index].unsqueeze(0).unsqueeze(-1).unsqueeze(-1).unsqueeze(-1) ** args.gamma).data.cpu().numpy()
             for index, p_ in enumerate(curr_perturbation_self_attn)
         ]
 
