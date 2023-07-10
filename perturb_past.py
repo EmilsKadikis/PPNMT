@@ -22,7 +22,7 @@ class PerturbationArgs:
         self.gm_scale = kwargs.pop("gm_scale", 0.95)
         self.stepsize = kwargs.pop("stepsize", 0.1)
         self.temperature = kwargs.pop("temperature", 1)
-        # TODO: grad length
+        self.grad_length = kwargs.pop("grad_length", 8)
 
 def _to_var(x, requires_grad=False, volatile=False, device='cuda'):
     if torch.cuda.is_available() and device == 'cuda':
@@ -108,12 +108,18 @@ def perturb_past(
     grad_norms_self_attn: List[torch.Tensor],
     args: PerturbationArgs,
 ) -> Tuple[Tuple[torch.Tensor]]:  
+    if past is None or last_tokens is None:
+        return past, grad_norms_self_attn
+    
     # do perturbation
     past_self_attn = [torch.cat((p[0].unsqueeze(0), p[1].unsqueeze(0)), dim=0) for p in past]
     past_cross_attn = [torch.cat((p[2].unsqueeze(0), p[3].unsqueeze(0)), dim=0) for p in past]
     device = past_self_attn[0].device
     
     _, _, _, curr_length, _ = past_self_attn[0].shape
+
+    if curr_length > args.grad_length:
+        return past, grad_norms_self_attn
 
     grad_accumulator_self_attn = [
         (np.zeros(p.shape).astype("float32"))

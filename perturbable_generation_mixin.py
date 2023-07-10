@@ -659,9 +659,11 @@ class PerturbableGenerationMixin(GenerationMixin):
             # prepare model inputs
             model_inputs = self.prepare_inputs_for_generation(input_ids, **model_kwargs)
 
+            unperturbed_past_key_values = model_inputs.pop("past_key_values", None)
             # forward pass to get next token
             unperturbed_outputs = self(
                 **model_inputs,
+                past_key_values=unperturbed_past_key_values,
                 return_dict=True,
                 output_attentions=output_attentions,
                 output_hidden_states=output_hidden_states,
@@ -669,7 +671,7 @@ class PerturbableGenerationMixin(GenerationMixin):
 
             # do perturbations
             perturbed_past_key_values, grad_norms = perturb_past(
-                past=unperturbed_outputs.past_key_values, 
+                past=unperturbed_past_key_values, 
                 last_tokens=next_tokens,
                 encoder_hidden_states=encoder_hidden_states,
                 model=self,
@@ -677,9 +679,6 @@ class PerturbableGenerationMixin(GenerationMixin):
                 grad_norms_self_attn=grad_norms,
                 args=perturbation_args
             )
-
-            # remove "past_key_values" from model_inputs
-            model_inputs.pop("past_key_values", None)
 
             outputs = self(
                 **model_inputs,
