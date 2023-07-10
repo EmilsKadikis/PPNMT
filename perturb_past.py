@@ -18,7 +18,7 @@ class PerturbationArgs:
         self.positive_bag_of_words = kwargs.pop("positive_bag_of_words", None)
         self.negative_bag_of_words = kwargs.pop("negative_bag_of_words", None)
         self.gamma = kwargs.pop("gamma", 1)
-        self.kl_scale = kwargs.pop("kl_scale", 0.01)
+        self.kl_scale = kwargs.pop("kl_scale", 0.1)
         self.gm_scale = kwargs.pop("gm_scale", 0.95)
         self.stepsize = kwargs.pop("stepsize", 0.1)
         self.temperature = kwargs.pop("temperature", 1)

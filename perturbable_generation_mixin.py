@@ -662,8 +662,8 @@ class PerturbableGenerationMixin(GenerationMixin):
             unperturbed_past_key_values = model_inputs.pop("past_key_values", None)
             # forward pass to get next token
             unperturbed_outputs = self(
-                **model_inputs,
-                past_key_values=unperturbed_past_key_values,
+                encoder_outputs=model_kwargs.get("encoder_outputs"), 
+                decoder_input_ids=input_ids,                
                 return_dict=True,
                 output_attentions=output_attentions,
                 output_hidden_states=output_hidden_states,
