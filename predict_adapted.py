@@ -63,11 +63,17 @@ def make_adapted_predictions(source_texts, hyperparameters, device="cpu"):
     )
 
     max_length = hyperparameters.pop("length", 100)
+    batch_size = hyperparameters.pop("batch_size", 50)
     # top_k = hyperparameters.pop("top_k", 5)
 
+    # sort source_texts by length for more efficient generation
+    source_texts = [(i, text) for i, text in enumerate(source_texts)]
+    source_texts.sort(key=lambda x: len(x[1]))
+
     predictions = []
-    batches = list(chunk(source_texts, 4))
+    batches = list(chunk(source_texts, batch_size))
     for texts in tqdm(batches):
+        indices, texts = zip(*texts)
         encoded_texts = tokenizer(texts, padding=True, return_tensors="pt")
         input_ids = encoded_texts.input_ids.to(device) # [batch_size, max_seq_len]
         attention_mask = encoded_texts.attention_mask.to(device) # [batch_size, max_seq_len]
@@ -76,7 +82,11 @@ def make_adapted_predictions(source_texts, hyperparameters, device="cpu"):
         results = model.generate(args, input_ids, attention_mask=attention_mask, generation_config=generation_config)
         decoded_results = tokenizer.batch_decode(results, skip_special_tokens=True)
 
+        decoded_results = [(i, text) for i, text in zip(indices, decoded_results)]
         predictions.extend(decoded_results)
         print(decoded_results)
     
+    # sort predictions back into original order
+    predictions.sort(key=lambda x: x[0])
+    predictions = [text for _, text in predictions]
     return predictions
