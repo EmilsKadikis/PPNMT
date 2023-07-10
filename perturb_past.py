@@ -118,7 +118,7 @@ def perturb_past(
     
     _, _, _, curr_length, _ = past_self_attn[0].shape
 
-    if curr_length > args.grad_length:
+    if curr_length >= args.grad_length:
         return past, grad_norms_self_attn
 
     grad_accumulator_self_attn = [
