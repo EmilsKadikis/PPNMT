@@ -32,7 +32,7 @@ def _to_var(x, requires_grad=False, volatile=False, device='cuda'):
     return Variable(x, requires_grad=requires_grad, volatile=volatile)
 
 def _get_decay_mask(decay: bool, window_length: int):
-    if decay:
+    if decay and window_length > 0:
         decay_mask = torch.arange(
             0.,
             1.0 + SMALL_CONST,
@@ -42,7 +42,8 @@ def _get_decay_mask(decay: bool, window_length: int):
         decay_mask = 1.0
     return decay_mask
 
-def _get_window_mask(curr_length, window_length, attention, decay_mask, device='cuda'):
+def _get_window_mask(curr_length, window_length, decay, attention, device='cuda'):
+    decay_mask = _get_decay_mask(decay, window_length)
     if curr_length > window_length and window_length > 0:
         ones_key_val_shape = (
                 tuple(attention[0].shape[:-2])
@@ -106,6 +107,7 @@ def perturb_past(
     model: PreTrainedModel,
     unperturbed_logits: torch.Tensor, # shape [batch, seq_len, vocab_size]
     grad_norms_self_attn: List[torch.Tensor],
+    encoder_attention_mask: torch.Tensor, # shape [batch, seq_len]
     args: PerturbationArgs,
 ) -> Tuple[Tuple[torch.Tensor]]:  
     if past is None or last_tokens is None:
@@ -126,8 +128,7 @@ def perturb_past(
         for p in past_self_attn
     ] # [2, batch_size, num_heads, current_seq_len, head_dim] (the 2 is for key and value of self attention)
 
-    decay_mask = _get_decay_mask(args.decay, args.window_length)
-    window_mask = _get_window_mask(curr_length, args.window_length, past_self_attn, decay_mask, device)
+    window_mask = _get_window_mask(curr_length, args.window_length, args.decay, past_self_attn, device)
 
     for i in range(args.num_iterations):
         curr_perturbation_self_attn = [
@@ -144,7 +145,7 @@ def perturb_past(
             last_tokens = torch.LongTensor([[model.config.pad_token_id]] * past_self_attn[0].shape[1]).to(device)
         elif len(last_tokens.shape) == 1:
             last_tokens = last_tokens.unsqueeze(-1) # [batch, 1]
-        model_output = model.get_decoder()(input_ids=last_tokens, past_key_values=perturbed_past, encoder_hidden_states=encoder_hidden_states[-1])
+        model_output = model.get_decoder()(input_ids=last_tokens, past_key_values=perturbed_past, encoder_hidden_states=encoder_hidden_states[-1], encoder_attention_mask=encoder_attention_mask)
         lm_logits = model.lm_head(model_output[0]) + model.final_logits_bias
         logits = lm_logits[:, -1, :] # [batch, vocab_size] (takes the logits of the last token)
         probs = F.softmax(logits, dim=-1) # [batch, vocab_size]

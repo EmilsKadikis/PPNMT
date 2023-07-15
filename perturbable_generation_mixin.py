@@ -663,7 +663,8 @@ class PerturbableGenerationMixin(GenerationMixin):
             # forward pass to get next token
             unperturbed_outputs = self(
                 encoder_outputs=model_kwargs.get("encoder_outputs"), 
-                decoder_input_ids=input_ids,                
+                decoder_input_ids=input_ids,   
+                attention_mask=model_kwargs.get("attention_mask"),             
                 return_dict=True,
                 output_attentions=output_attentions,
                 output_hidden_states=output_hidden_states,
@@ -677,6 +678,7 @@ class PerturbableGenerationMixin(GenerationMixin):
                 model=self,
                 unperturbed_logits=unperturbed_outputs.logits,
                 grad_norms_self_attn=grad_norms,
+                encoder_attention_mask=model_kwargs.get("attention_mask"),
                 args=perturbation_args
             )
 

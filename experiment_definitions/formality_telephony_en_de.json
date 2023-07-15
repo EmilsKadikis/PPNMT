@@ -6,6 +6,7 @@
             "notes": "",
             "try_combinations": [],
             "verbosity": "quiet",
+            "device": "mps",
 
             "extra_evaluation": {
                 "name": "formality.evaluate_formality_accuracy",
@@ -16,6 +17,7 @@
             },
             
             "hyperparameters" : {
+                "batch_size": 1,
                 "translation_model": "Helsinki-NLP/opus-mt-en-de",
                 "data_loader": {
                     "name":"formality.data_loader_formal_telephony",
@@ -25,12 +27,12 @@
                     }
                 },
                 "bag_of_words": ["Sie", "Ihnen", "Ihr"], 
+                "negative_bag_of_words": ["du", "ihr", "dein"],
                 "num_samples": 1,
                 "sample": false,
                 "decay": true,
                 
                 "length": 100,
-                "no_cuda": true,
                 "top_k": 5,
                 
                 "gamma": 1,
