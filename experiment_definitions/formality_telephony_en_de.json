@@ -7,6 +7,8 @@
             "try_combinations": [],
             "verbosity": "quiet",
             "device": "mps",
+            "batch_size": 50,
+            "worker_count": 4,
 
             "extra_evaluation": {
                 "name": "formality.evaluate_formality_accuracy",
@@ -17,7 +19,6 @@
             },
             
             "hyperparameters" : {
-                "batch_size": 1,
                 "translation_model": "Helsinki-NLP/opus-mt-en-de",
                 "data_loader": {
                     "name":"formality.data_loader_formal_telephony",

@@ -145,9 +145,11 @@ if __name__ == "__main__":
                 ("chrf", None), 
                 ("bertscore", {"lang":"de"})]
 
+        batch_size = experiment_definition.pop("batch_size", 50)
+        worker_count = experiment_definition.pop("worker_count", 4)
 
         adapted_predictions = []
-        adapted_predictions = make_adapted_predictions(source_texts, hyperparameters=hyperparameters, device=device)
+        adapted_predictions = make_adapted_predictions(source_texts, hyperparameters=hyperparameters, batch_size=batch_size, worker_count=worker_count, device=device)
 
         unadapted_evaluation_results = {}
         for (metric_name, kwargs) in metrics:

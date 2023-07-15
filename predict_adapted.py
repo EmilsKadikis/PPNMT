@@ -1,10 +1,8 @@
-import os
-from tqdm import tqdm
-import random
 from transformers import MarianTokenizer, GenerationConfig
 from perturbable_marianmt_model import PerturbableMarianMTModel
 from bag_of_words_processor import get_bag_of_words_vectors
 from perturb_past import PerturbationArgs
+from multiprocessing import Pool
 
 def _get_bags_of_words(hyperparameters, device, tokenizer):
     positive_bags_of_words = hyperparameters.pop("bag_of_words", None)
@@ -42,8 +40,7 @@ def chunk(l, n):
     for i in range(0, len(l), n): 
         yield l[i:i + n]
 
-def make_adapted_predictions(source_texts, hyperparameters, device="cpu"):
-    print(f"Using device {device}")
+def load_model(hyperparameters, device="cpu"):
     pretrained_model = hyperparameters["translation_model"]
     model = PerturbableMarianMTModel.from_pretrained(
         pretrained_model,
@@ -54,7 +51,12 @@ def make_adapted_predictions(source_texts, hyperparameters, device="cpu"):
 
     # load tokenizer
     tokenizer = MarianTokenizer.from_pretrained(pretrained_model)
+    return model, tokenizer
 
+def _make_adapted_predictions(inputs):
+    source_texts, hyperparameters, device = inputs
+    print(f"Using device {device}")
+    model, tokenizer = load_model(hyperparameters, device)
     positive_bow, negative_bow = _get_bags_of_words(hyperparameters, device, tokenizer)
     args = PerturbationArgs(
         positive_bag_of_words=positive_bow,
@@ -63,17 +65,10 @@ def make_adapted_predictions(source_texts, hyperparameters, device="cpu"):
     )
 
     max_length = hyperparameters.pop("length", 100)
-    batch_size = hyperparameters.pop("batch_size", 50)
     # top_k = hyperparameters.pop("top_k", 5)
 
-    # sort source_texts by length for more efficient generation
-    source_texts = [(i, text) for i, text in enumerate(source_texts)]
-    source_texts.sort(key=lambda x: len(x[1]))
-
     predictions = []
-    batches = list(chunk(source_texts, batch_size))
-    for texts in tqdm(batches):
-        indices, texts = zip(*texts)
+    for texts in source_texts:
         encoded_texts = tokenizer(texts, padding=True, return_tensors="pt")
         input_ids = encoded_texts.input_ids.to(device) # [batch_size, max_seq_len]
         attention_mask = encoded_texts.attention_mask.to(device) # [batch_size, max_seq_len]
@@ -82,11 +77,18 @@ def make_adapted_predictions(source_texts, hyperparameters, device="cpu"):
         results = model.generate(args, input_ids, attention_mask=attention_mask, generation_config=generation_config)
         decoded_results = tokenizer.batch_decode(results, skip_special_tokens=True)
 
-        decoded_results = [(i, text) for i, text in zip(indices, decoded_results)]
         predictions.extend(decoded_results)
         print(decoded_results)
     
-    # sort predictions back into original order
-    predictions.sort(key=lambda x: x[0])
-    predictions = [text for _, text in predictions]
     return predictions
+
+
+def make_adapted_predictions(source_texts, hyperparameters, batch_size=50, worker_count=4, device="cpu"):
+    batches = list(chunk(source_texts, batch_size))
+    # start 4 worker processes
+    with Pool(processes=worker_count) as pool:
+        inputs = [(batch, hyperparameters, device) for batch in batches]
+        results = pool.map(_make_adapted_predictions, inputs)
+        print("FINAL RESULTS:", results)
+
+    return [item for sublist in results for item in sublist]
