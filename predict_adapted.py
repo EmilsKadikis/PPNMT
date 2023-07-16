@@ -1,8 +1,9 @@
-from transformers import MarianTokenizer, GenerationConfig
+from transformers import MarianTokenizer, GenerationConfig, LogitsProcessorList
 from perturbable_marianmt_model import PerturbableMarianMTModel
 from bag_of_words_processor import get_bag_of_words_vectors
 from perturb_past import PerturbationArgs
 from multiprocessing import Pool
+from forced_prefix_logits_processor import ForcedPrefixLogitsProcessor
 
 def _get_bags_of_words(hyperparameters, device, tokenizer):
     positive_bags_of_words = hyperparameters.pop("bag_of_words", None)
@@ -65,16 +66,21 @@ def _make_adapted_predictions(inputs):
     )
 
     max_length = hyperparameters.pop("length", 100)
-    # top_k = hyperparameters.pop("top_k", 5)
+    warmup_steps = hyperparameters.pop("warmup_steps", 0)
+
+    if warmup_steps > 0:
+        logits_processor = LogitsProcessorList([ForcedPrefixLogitsProcessor([tokenizer.pad_token_id] * warmup_steps)])
+    else:
+        logits_processor = None
+    generation_config = GenerationConfig(num_beams=1, do_sample=False, max_new_tokens=max_length-1)
 
     predictions = []
     for texts in source_texts:
         encoded_texts = tokenizer(texts, padding=True, return_tensors="pt")
         input_ids = encoded_texts.input_ids.to(device) # [batch_size, max_seq_len]
         attention_mask = encoded_texts.attention_mask.to(device) # [batch_size, max_seq_len]
-        generation_config = GenerationConfig(num_beams=1, do_sample=False, max_new_tokens=max_length-1)
 
-        results = model.generate(args, input_ids, attention_mask=attention_mask, generation_config=generation_config)
+        results = model.generate(args, input_ids, attention_mask=attention_mask, generation_config=generation_config, logits_processor=logits_processor)
         decoded_results = tokenizer.batch_decode(results, skip_special_tokens=True)
 
         predictions.extend(decoded_results)

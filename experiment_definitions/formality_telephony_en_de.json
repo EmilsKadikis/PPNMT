@@ -35,6 +35,8 @@
                 
                 "length": 100,
                 "top_k": 5,
+
+                "warmup_steps": 5,
                 
                 "gamma": 1,
                 "num_iterations": 6,
