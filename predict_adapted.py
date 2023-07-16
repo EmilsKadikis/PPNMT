@@ -90,8 +90,10 @@ def _make_adapted_predictions(inputs):
 
 
 def make_adapted_predictions(source_texts, hyperparameters, batch_size=50, worker_count=4, device="cpu"):
+    if worker_count == 1:
+        return _make_adapted_predictions((source_texts, hyperparameters, device))
+    
     batches = list(chunk(source_texts, batch_size))
-    # start 4 worker processes
     with Pool(processes=worker_count) as pool:
         inputs = [(batch, hyperparameters, device) for batch in batches]
         results = pool.map(_make_adapted_predictions, inputs)
