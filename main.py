@@ -114,8 +114,8 @@ if __name__ == "__main__":
     if args.infile is not None and args.infile[0] is not None:
         all_experiments = json.load(args.infile[0])['experiments']
     else:
-        print("No .json file defining the experiment passed in, running 'experiment_definitions/automotive_domain.json' by default.")
-        all_experiments = json.load(open("experiment_definitions/automotive_domain.json", "r"))['experiments']
+        print("No .json file defining the experiment passed in, running 'experiment_definitions/formality_small.json' by default.")
+        all_experiments = json.load(open("experiment_definitions/formality_small.json", "r"))['experiments']
 
     all_experiments = expand_experiments(all_experiments)
     for experiment_definition in all_experiments:
@@ -129,15 +129,14 @@ if __name__ == "__main__":
 
         source_texts, target_texts, positive_bag_of_words, negative_bag_of_words = load_data_from_data_loader(hyperparameters["data_loader"])
 
-        device = experiment_definition.get("device", "cpu")
+        device = experiment_definition.get("device", "mps")
         model_name = hyperparameters["translation_model"]
         if positive_bag_of_words is not None:
             hyperparameters["bag_of_words"] = positive_bag_of_words
         if negative_bag_of_words is not None:
             hyperparameters["negative_bag_of_words"] = negative_bag_of_words
-        generate_unperturbed_predictions = hyperparameters.get("generate_unperturbed_predictions", False)
-        if not generate_unperturbed_predictions:
-            predictions = make_predictions(source_texts, max_length=hyperparameters.get("length", 100), model_name=model_name, device=device)
+
+        predictions = make_predictions(source_texts, max_length=hyperparameters.get("length", 100), model_name=model_name, device=device)
         
         metrics = [("bleu", None),
                 ("google_bleu", None), 
@@ -146,12 +145,12 @@ if __name__ == "__main__":
                 ("chrf", None), 
                 ("bertscore", {"lang":"de"})]
 
+        batch_size = experiment_definition.pop("batch_size", 50)
+        worker_count = experiment_definition.pop("worker_count", 4)
 
         adapted_predictions = []
-        adapted_predictions, unperturbed_predictions = make_adapted_predictions(source_texts, verbosity=experiment_definition.get("verbosity", "quiet"), hyperparameters=hyperparameters, target_texts=target_texts, generate_unperturbed_predictions=generate_unperturbed_predictions)
+        adapted_predictions = make_adapted_predictions(source_texts, hyperparameters=hyperparameters, batch_size=batch_size, worker_count=worker_count, device=device)
 
-        if generate_unperturbed_predictions:
-            predictions = unperturbed_predictions
         unadapted_evaluation_results = {}
         for (metric_name, kwargs) in metrics:
             unadapted_evaluation_results[metric_name] = evaluate_with_metric(predictions, target_texts, metric_name, kwargs)

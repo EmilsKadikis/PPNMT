@@ -6,6 +6,9 @@
             "notes": "",
             "try_combinations": [],
             "verbosity": "quiet",
+            "device": "mps",
+            "batch_size": 50,
+            "worker_count": 4,
 
             "extra_evaluation": {
                 "name": "formality.evaluate_formality_accuracy",
@@ -25,12 +28,12 @@
                     }
                 },
                 "bag_of_words": ["Sie", "Ihnen", "Ihr"], 
+                "negative_bag_of_words": ["du", "ihr", "dein"],
                 "num_samples": 1,
                 "sample": false,
                 "decay": true,
                 
                 "length": 100,
-                "no_cuda": true,
                 "top_k": 5,
                 
                 "gamma": 1,
