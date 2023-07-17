@@ -7,8 +7,8 @@
             "try_combinations": [],
             "verbosity": "quiet",
             "device": "mps",
-            "batch_size": 50,
-            "worker_count": 4,
+            "batch_size": 200,  
+            "worker_count": 1,
 
             "extra_evaluation": {
                 "name": "formality.evaluate_formality_accuracy",
@@ -21,10 +21,13 @@
             "hyperparameters" : {
                 "translation_model": "Helsinki-NLP/opus-mt-en-de",
                 "data_loader": {
-                    "name":"formality.data_loader_formal_telephony",
+                    "name":"formality.data_loader",
                     "args": {
                         "source_language": "en",
-                        "target_language": "de"
+                        "target_language": "de",
+                        "split": "train",
+                        "domain": "telephony",
+                        "target_formality": "formal"
                     }
                 },
                 "bag_of_words": ["Sie", "Ihnen", "Ihr"], 
@@ -36,7 +39,7 @@
                 "length": 100,
                 "top_k": 5,
 
-                "warmup_steps": 5,
+                "warmup_steps": 1,
                 
                 "gamma": 1,
                 "num_iterations": 6,
