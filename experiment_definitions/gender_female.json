@@ -1,0 +1,45 @@
+{
+    "experiments": [
+        {
+            "experiment_name": "gender_adaptation", 
+            "tags": ["gender", "female", "en-ar"],
+            "notes": "",
+            "try_combinations": [],
+            "verbosity": "quiet",
+            "device": "mps",
+            "batch_size": 100,  
+            "worker_count": 1,
+            
+            "hyperparameters" : {
+                "translation_model": "Helsinki-NLP/opus-mt-en-ar",
+                "data_loader": {
+                    "name":"gender.data_loader",
+                    "args": {
+                        "split": "train",
+                        "target_gender": "F",
+                        "count": 100
+                    }
+                },
+                "bag_of_words": ["أنتِ", "سيدة", "ت", "ها", "هي", "تي", "ين"], 
+                "negative_bag_of_words": ["أنتَ", "سيد", "هُ", "هو", "ي"],
+                "num_samples": 1,
+                "sample": false,
+                "decay": true,
+                
+                "length": 100,
+                "top_k": 5,
+
+                "warmup_steps": 1,
+                
+                "gamma": 1,
+                "num_iterations": 6,
+                "stepsize": 0.1,
+                "window_length": 5,
+                "kl_scale": 0.1,
+                "gm_scale": 0.95,
+                "temperature": 1.0,
+                "grad_length": 8
+            }
+        }
+    ]
+}
