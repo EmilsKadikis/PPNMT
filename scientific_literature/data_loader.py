@@ -42,8 +42,6 @@ def load_data(source_language, target_language, split, domain, bag_of_words_type
         raise ValueError("Invalid target language: " + target_language)
     if source_language == target_language:
         raise ValueError("Source and target language must be different")
-    if source_language == "zh" and target_language == "en" or source_language == "en" and target_language == "zh":
-        raise ValueError("Chinese-English translation is not supported")
     domain_code = possible_domains[domain]
     japanese_texts, english_texts = _load_all_domain_texts(split)
 
@@ -72,7 +70,7 @@ def load_data(source_language, target_language, split, domain, bag_of_words_type
 
 def _load_all_domain_texts(split, count = None): 
     file_name = f"train-1.txt" if split == "train" else f"{split}.txt"
-    file_path = f"./ASPEC/ASPEC/ASPEC-JE/{split}/{file_name}"
+    file_path = f"./scientific_literature/ASPEC/ASPEC-JE/{split}/{file_name}"
 
     japanese_texts = {}
     english_texts = {}
@@ -114,10 +112,8 @@ def _get_topic_modeling_bag_of_words(target_texts, domain_code, count):
 
 if __name__ == "__main__":
     # examples
-    source_texts, target_texts, positive_bag_of_words, negative_bag_of_words = load_data("ja", "en", "train", "medicine", "topic_modeling", count=200, count_for_bag_of_words=200, use_negative_bags_of_words=True)
+    source_texts, target_texts, positive_bag_of_words, negative_bag_of_words = load_data("ja", "en", "train", "medicine", None, count=200, count_for_bag_of_words=200, use_negative_bags_of_words=True)
     print(source_texts[0])
     print(target_texts[0])
     print(positive_bag_of_words)
     print(negative_bag_of_words)
-    print(len(positive_bag_of_words))
-    print(len(negative_bag_of_words))
