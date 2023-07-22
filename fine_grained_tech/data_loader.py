@@ -1,8 +1,14 @@
+possible_source_languages = ["en", "zh"]
+possible_target_languages = ["en", "zh"]
 possible_domains = ["auto", "education", "network", "phone"]
 possible_bag_of_words_types = ["dict", "topic_modeling"]
 possible_splits = ["dev", "test"]
 
 def load_data(source_language, target_language, split, domain, bag_of_words_type, use_negative_bags_of_words=False):
+    if source_language not in possible_source_languages:
+        raise ValueError("Invalid source language: " + source_language)
+    if target_language not in possible_target_languages:
+        raise ValueError("Invalid target language: " + target_language)
     if domain not in possible_domains:
         raise ValueError("Invalid domain: " + domain)
     if bag_of_words_type is not None and bag_of_words_type not in possible_bag_of_words_types:
@@ -29,7 +35,7 @@ def load_data(source_language, target_language, split, domain, bag_of_words_type
     return source_texts, target_texts, positive_bag_of_words, negative_bag_of_words
 
 def _load_domain_texts(domain, split, language):
-    base_path = f"./FGraDA/FDMT3.0/{split}/" 
+    base_path = f"./fine_grained_tech/FDMT3.0/{split}/" 
     base_domain_path = base_path + domain + f".{split}."
     texts = []
     with open(base_domain_path + language, "r") as f:
@@ -39,11 +45,11 @@ def _load_domain_texts(domain, split, language):
 
 
 def _get_dict_bag_of_words(domain, target_language):
-    positive_bag_of_words = f"FGraDA/FDMT3.0/dict/{domain}.dict.{target_language}"
+    positive_bag_of_words = f"fine_grained_tech/FDMT3.0/dict/{domain}.dict.{target_language}"
     negative_bag_of_words = ""
     for other_domain in possible_domains:
         if other_domain != domain:
-            negative_bag_of_words += f"FGraDA/FDMT3.0/dict/{other_domain}.dict.{target_language};"
+            negative_bag_of_words += f"fine_grained_tech/FDMT3.0/dict/{other_domain}.dict.{target_language};"
     negative_bag_of_words = negative_bag_of_words[:-1]
     return positive_bag_of_words, negative_bag_of_words
 

@@ -35,15 +35,12 @@ def generate_bags_of_words(domain_texts, score_threshold = None):
 
 if __name__ == "__main__":
     # Example
-    from FGraDA.data_loader_automotive_zh_en import load_data as load_data_automotive
-    from FGraDA.data_loader_education_zh_en import load_data as load_data_education
-    from FGraDA.data_loader_network_zh_en import load_data as load_data_network
-    from FGraDA.data_loader_phone_zh_en import load_data as load_data_phone
+    from fine_grained_tech.data_loader import load_data
 
-    _, target_automotive = load_data_automotive()
-    _, target_education = load_data_education()
-    _, target_network = load_data_network()
-    _, target_phone = load_data_phone()
+    _, target_automotive, _, _ = load_data("zh", "en", "dev", "auto", None)
+    _, target_education, _, _ = load_data("zh", "en", "dev", "education", None)
+    _, target_network, _, _ = load_data("zh", "en", "dev", "network", None)
+    _, target_phone, _, _ = load_data("zh", "en", "dev", "phone", None)
 
     domain_texts = [target_automotive, target_education, target_network, target_phone]
     bags_of_words = generate_bags_of_words(domain_texts)
