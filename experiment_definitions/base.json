@@ -1,0 +1,26 @@
+{
+    "verbosity": "quiet",
+    "device": "mps",
+    "batch_size": 200,  
+    "worker_count": 1,
+    
+    "hyperparameters" : {
+        "num_samples": 1,
+        "sample": false,
+        "decay": true,
+        
+        "length": 100,
+        "top_k": 5,
+
+        "warmup_steps": 1,
+        
+        "gamma": 1,
+        "num_iterations": 6,
+        "stepsize": 0.1,
+        "window_length": 5,
+        "kl_scale": 0.1,
+        "gm_scale": 0.95,
+        "temperature": 1.0,
+        "grad_length": 8
+    }
+}

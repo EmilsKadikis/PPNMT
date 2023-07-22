@@ -1,14 +1,11 @@
 {
     "experiments": [
         {
+            "base": "experiment_definitions/base.json",
             "experiment_name": "formality_adaptation", 
             "tags": ["formality", "telephony", "en-de"],
             "notes": "",
             "try_combinations": [],
-            "verbosity": "quiet",
-            "device": "mps",
-            "batch_size": 200,  
-            "worker_count": 1,
 
             "extra_evaluation": {
                 "name": "formality.evaluate_formality_accuracy",
@@ -31,24 +28,7 @@
                     }
                 },
                 "bag_of_words": ["Sie", "Ihnen", "Ihr"], 
-                "negative_bag_of_words": ["du", "ihr", "dein"],
-                "num_samples": 1,
-                "sample": false,
-                "decay": true,
-                
-                "length": 100,
-                "top_k": 5,
-
-                "warmup_steps": 1,
-                
-                "gamma": 1,
-                "num_iterations": 6,
-                "stepsize": 0.1,
-                "window_length": 5,
-                "kl_scale": 0.1,
-                "gm_scale": 0.95,
-                "temperature": 1.0,
-                "grad_length": 8
+                "negative_bag_of_words": ["du", "ihr", "dein"]
             }
         }
     ]
