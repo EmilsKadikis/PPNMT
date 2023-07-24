@@ -11,27 +11,31 @@ possible_domains = {
     "agriculture": "F",
     "medicine": "G",
     "engineering": "H",
-    "systems Engineering": "I",
-    "computer Science": "J",
-    "industrial Engineering": "K",
-    "energy Science": "L",
-    "nuclear Science": "M",
-    "electronic Engineering": "N",
+    "systems engineering": "I",
+    "computer science": "J",
+    "industrial engineering": "K",
+    "energy science": "L",
+    "nuclear science": "M",
+    "electronic engineering": "N",
     "thermodynamics": "P",
-    "mechanical Engineering": "Q",
+    "mechanical engineering": "Q",
     "construction": "R",
-    "environmental Science": "S",
-    "transportation Engineering": "T",
-    "mining Engineering": "U",
-    "metal Engineering": "W",
-    "chemical Engineering": "X",
-    "chemical Manufacturing": "Y",
+    "environmental science": "S",
+    "transportation engineering": "T",
+    "mining engineering": "U",
+    "metal engineering": "W",
+    "chemical engineering": "X",
+    "chemical manufacturing": "Y",
     "other": "Z"
 }
 
-def load_data(source_language, target_language, split, domain, bag_of_words_type, count=200, count_for_bag_of_words=200, use_negative_bags_of_words=False):
+def load_data(source_language, target_language, split, domain, bag_of_words_type, distractor_domains=None, count=200, count_for_bag_of_words=None, use_negative_bags_of_words=False):
     if domain not in possible_domains:
         raise ValueError("Invalid domain: " + domain)
+    if distractor_domains is not None:
+        for distractor_domain in distractor_domains:
+            if distractor_domain not in possible_domains:
+                raise ValueError("Invalid distractor domain: " + distractor_domain)
     if bag_of_words_type is not None and bag_of_words_type not in possible_bag_of_words_types:
         raise ValueError("Invalid bag of words type: " + bag_of_words_type)
     if split not in possible_splits:
@@ -42,6 +46,20 @@ def load_data(source_language, target_language, split, domain, bag_of_words_type
         raise ValueError("Invalid target language: " + target_language)
     if source_language == target_language:
         raise ValueError("Source and target language must be different")
+    
+    if count_for_bag_of_words is None:
+        count_for_bag_of_words = count
+
+    if distractor_domains is None:
+        distractor_domains = []
+        for possible_domain in possible_domains.keys():
+            if possible_domain != domain:
+                distractor_domains.append(possible_domain)
+
+    distractor_domain_codes = []
+    for distractor_domain in distractor_domains:
+        distractor_domain_codes.append(possible_domains[distractor_domain])
+
     domain_code = possible_domains[domain]
     japanese_texts, english_texts = _load_all_domain_texts(split)
 
@@ -57,9 +75,9 @@ def load_data(source_language, target_language, split, domain, bag_of_words_type
         negative_bag_of_words = None
     elif bag_of_words_type == "topic_modeling":
         if target_language == "ja":
-            positive_bag_of_words, negative_bag_of_words = _get_topic_modeling_bag_of_words(japanese_texts, domain_code, count_for_bag_of_words)
+            positive_bag_of_words, negative_bag_of_words = _get_topic_modeling_bag_of_words(japanese_texts, domain_code, distractor_domain_codes, count_for_bag_of_words)
         else:
-            positive_bag_of_words, negative_bag_of_words = _get_topic_modeling_bag_of_words(english_texts, domain_code, count_for_bag_of_words)
+            positive_bag_of_words, negative_bag_of_words = _get_topic_modeling_bag_of_words(english_texts, domain_code, distractor_domain_codes, count_for_bag_of_words)
     else:
         raise ValueError("Invalid bag of words type: " + bag_of_words_type)
     
@@ -95,15 +113,14 @@ def _load_all_domain_texts(split, count = None):
     return japanese_texts, english_texts
 
 
-def _get_topic_modeling_bag_of_words(target_texts, domain_code, count):
+def _get_topic_modeling_bag_of_words(target_texts, domain_code, distractor_domain_codes, count):
     from topic_modelling_bag_of_words_generator import generate_bags_of_words
     domain_texts = [target_texts[domain_code][0:count]]
     other_domain_texts = []
-    for other_domain in possible_domains.keys():
-        other_domain_code = possible_domains[other_domain]
+    for other_domain_code in distractor_domain_codes:
         if other_domain_code != domain_code:
-            other_domain_texts.extend(target_texts[other_domain_code][0:count])
-    domain_texts.append(other_domain_texts)
+            other_domain_texts.append(target_texts[other_domain_code][0:count])
+    domain_texts.extend(other_domain_texts)
             
     bags_of_words = generate_bags_of_words(domain_texts)
     negative_bags_of_words = bags_of_words[1:]
@@ -112,7 +129,8 @@ def _get_topic_modeling_bag_of_words(target_texts, domain_code, count):
 
 if __name__ == "__main__":
     # examples
-    source_texts, target_texts, positive_bag_of_words, negative_bag_of_words = load_data("ja", "en", "train", "medicine", None, count=200, count_for_bag_of_words=200, use_negative_bags_of_words=True)
+    distractor_domains = ["physics", "biology", "chemistry", "computer science"]
+    source_texts, target_texts, positive_bag_of_words, negative_bag_of_words = load_data("ja", "en", "train", "medicine", "topic_modeling", distractor_domains=distractor_domains, count=200, count_for_bag_of_words=200, use_negative_bags_of_words=True)
     print(source_texts[0])
     print(target_texts[0])
     print(positive_bag_of_words)
