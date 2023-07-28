@@ -4,21 +4,21 @@ from bertopic.dimensionality import BaseDimensionalityReduction
 from sklearn.linear_model import LogisticRegression
 
 import nltk
-from nltk.corpus import stopwords
+from stop_words import get_stopwords
 from nltk.tokenize import word_tokenize
 
 nltk.download('stopwords')
 nltk.download('punkt')
 
-def _preprocess_text(text):
-    stop_words = set(stopwords.words('english'))
+def _preprocess_text(text, language_code):
+    stop_words = get_stopwords(language_code)
     tokens = word_tokenize(text.lower())
     tokens = [token for token in tokens if token.isalpha() and token not in stop_words]
     return " ".join(tokens)
 
-def generate_bags_of_words(domain_texts, score_threshold = None):
+def generate_bags_of_words(domain_texts, language_code, score_threshold = None):
     all_texts = [text for domain in domain_texts for text in domain]        
-    processed_data = [_preprocess_text(sentence) for sentence in all_texts]
+    processed_data = [_preprocess_text(sentence, language_code) for sentence in all_texts]
 
     labels = [i for i in range(len(domain_texts)) for _ in range(len(domain_texts[i]))]
     empty_dimensionality_model = BaseDimensionalityReduction()

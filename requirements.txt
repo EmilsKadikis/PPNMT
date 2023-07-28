@@ -69,6 +69,7 @@ kiwisolver==1.4.4
 langcodes==3.3.0
 llvmlite==0.40.1
 lxml==4.9.2
+many-stop-words==0.2.2
 MarkupSafe==2.1.2
 matplotlib==3.7.1
 matplotlib-inline==0.1.6

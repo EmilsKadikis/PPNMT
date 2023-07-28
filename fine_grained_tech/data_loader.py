@@ -62,7 +62,7 @@ def _get_topic_modeling_bag_of_words(domain, split, target_language):
         if other_domain != domain:
             domain_texts.append(_load_domain_texts(other_domain, split, target_language))
             
-    bags_of_words = generate_bags_of_words(domain_texts)
+    bags_of_words = generate_bags_of_words(domain_texts, target_language)
     negative_bags_of_words = bags_of_words[1:]
     negative_bag_of_words = [word for bag_of_words in negative_bags_of_words for word in bag_of_words]
     return bags_of_words[0], negative_bag_of_words

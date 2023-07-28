@@ -75,9 +75,9 @@ def load_data(source_language, target_language, split, domain, bag_of_words_type
         negative_bag_of_words = None
     elif bag_of_words_type == "topic_modeling":
         if target_language == "ja":
-            positive_bag_of_words, negative_bag_of_words = _get_topic_modeling_bag_of_words(japanese_texts, domain_code, distractor_domain_codes, count_for_bag_of_words)
+            positive_bag_of_words, negative_bag_of_words = _get_topic_modeling_bag_of_words(japanese_texts, target_language, domain_code, distractor_domain_codes, count_for_bag_of_words)
         else:
-            positive_bag_of_words, negative_bag_of_words = _get_topic_modeling_bag_of_words(english_texts, domain_code, distractor_domain_codes, count_for_bag_of_words)
+            positive_bag_of_words, negative_bag_of_words = _get_topic_modeling_bag_of_words(english_texts, target_language, domain_code, distractor_domain_codes, count_for_bag_of_words)
     else:
         raise ValueError("Invalid bag of words type: " + bag_of_words_type)
     
@@ -113,7 +113,7 @@ def _load_all_domain_texts(split, count = None):
     return japanese_texts, english_texts
 
 
-def _get_topic_modeling_bag_of_words(target_texts, domain_code, distractor_domain_codes, count):
+def _get_topic_modeling_bag_of_words(target_texts, target_language, domain_code, distractor_domain_codes, count):
     from topic_modelling_bag_of_words_generator import generate_bags_of_words
     domain_texts = [target_texts[domain_code][0:count]]
     other_domain_texts = []
@@ -122,7 +122,7 @@ def _get_topic_modeling_bag_of_words(target_texts, domain_code, distractor_domai
             other_domain_texts.append(target_texts[other_domain_code][0:count])
     domain_texts.extend(other_domain_texts)
             
-    bags_of_words = generate_bags_of_words(domain_texts)
+    bags_of_words = generate_bags_of_words(domain_texts, target_language)
     negative_bags_of_words = bags_of_words[1:]
     negative_bag_of_words = [word for bag_of_words in negative_bags_of_words for word in bag_of_words]
     return bags_of_words[0], negative_bag_of_words
