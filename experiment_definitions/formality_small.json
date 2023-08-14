@@ -1,31 +1,18 @@
 {
     "experiments": [
         {
+            "base": "experiment_definitions/ppnmt_base.json",
             "experiment_name": "formality_adaptation", 
             "tags": ["formality", "telephony", "en-de", "small"],
             "notes": "",
             "try_combinations": [],
-            "device": "mps",
-            
+
             "hyperparameters" : {
                 "translation_model": "Helsinki-NLP/opus-mt-en-de",
                 "data_loader": "formality.small_data_loader",
+                "target_language": "de",
                 "bag_of_words": ["Sie", "Ihnen", "Ihr"], 
-                "negative_bag_of_words": ["du", "ihr", "dein"],
-                "num_samples": 1,
-                "decay": true,
-                
-                "length": 100,
-                "top_k": 5,
-                
-                "gamma": 1,
-                "num_iterations": 6,
-                "stepsize": 0.1,
-                "window_length": 5,
-                "kl_scale": 0.1,
-                "gm_scale": 0.95,
-                "temperature": 1.0,
-                "grad_length": 8
+                "negative_bag_of_words": ["du", "ihr", "dein"]
             }
         }
     ]

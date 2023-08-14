@@ -1,7 +1,7 @@
 {
     "experiments": [
         {
-            "base": "experiment_definitions/base.json",
+            "base": "experiment_definitions/ppnmt_base.json",
             "experiment_name": "science_domain", 
             "tags": ["science", "medicine", "ja-en"],
             "notes": "",
@@ -17,11 +17,11 @@
                         "split": "train",
                         "domain": "medicine",
                         "distractor_domains": ["physics", "biology", "chemistry", "computer science"],
-                        "bag_of_words_type": "topic_modeling",
-                        "count": 200,
-                        "use_negative_bags_of_words": true
+                        "count": 200
                     }
-                }
+                },
+                "bag_of_words": ["medicine"], 
+                "negative_bag_of_words": ["physics", "biology", "chemistry", "computer science"]
             }
         }
     ]

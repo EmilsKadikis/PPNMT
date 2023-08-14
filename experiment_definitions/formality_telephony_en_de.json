@@ -1,7 +1,7 @@
 {
     "experiments": [
         {
-            "base": "experiment_definitions/base.json",
+            "base": "experiment_definitions/ppnmt_base.json",
             "experiment_name": "formality_adaptation", 
             "tags": ["formality", "telephony", "en-de"],
             "notes": "",
