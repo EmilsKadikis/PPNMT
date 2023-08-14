@@ -99,6 +99,16 @@ def save_results(experiment_definition, unadapted_predictions, adapted_predictio
 
     return base_path
 
+def determine_target_language(hyperparameters):
+    if "target_language" in hyperparameters:
+        return hyperparameters["target_language"]
+    else:
+        data_loader = hyperparameters["data_loader"]
+        if isinstance(data_loader, dict):
+            return data_loader["args"]["target_language"]
+        
+    raise Exception("Could not determine target language from hyperparameters.")
+
 def load_data_from_data_loader(data_loader_definition): 
     # if data_loader_definition is a string, import the module and call load_data
     if isinstance(data_loader_definition, str):
@@ -143,7 +153,7 @@ if __name__ == "__main__":
                 ("sacrebleu", None), 
                 ("meteor", None), 
                 ("chrf", None), 
-                ("bertscore", {"lang":"de"})]
+                ("bertscore", {"lang":determine_target_language(hyperparameters)})]
 
         batch_size = experiment_definition.pop("batch_size", 50)
         worker_count = experiment_definition.pop("worker_count", 4)
