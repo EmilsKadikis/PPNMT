@@ -16,18 +16,6 @@ parser.add_argument('--infile', nargs=1,
                     type=argparse.FileType('r'))
 args = parser.parse_args()
 
-def initialize_experiment(experiment_definition):
-    wandb.init(
-        # mode="disabled",      
-        # set the wandb project where this run will be logged
-        project=experiment_definition.pop('wandb_project'),
-        group=experiment_definition.pop('experiment_name'),
-        tags=experiment_definition.pop('tags', None),
-        notes=experiment_definition.pop('notes', None),
-        # track hyperparameters and run metadata
-        config=experiment_definition['hyperparameters'],
-    )
-
 def determine_target_language(hyperparameters):
     if "target_language" in hyperparameters:
         return hyperparameters["target_language"]
@@ -58,7 +46,6 @@ if __name__ == "__main__":
 
     all_experiments = expand_experiments(all_experiments)
     for experiment_definition in all_experiments:
-        initialize_experiment(experiment_definition)
         print("=====================================================")
         print("Running experiment:")
         print(experiment_definition)
@@ -66,5 +53,4 @@ if __name__ == "__main__":
         experiment_entry_point = experiment_definition.pop("experiment_entry_point")
         experiment_entry_point = importlib.import_module(experiment_entry_point)
         experiment_entry_point.run(**experiment_definition)
-
-        wandb.finish()
+        print("=====================================================")

@@ -6,7 +6,18 @@ import importlib
 import time
 import wandb
 import json
-from data_loader_helpers import load_data_from_data_loader
+from experiment_helpers import load_data_from_data_loader, determine_target_language
+
+def _initialize_experiment(experiment_definition):
+    wandb.init(
+        # set the wandb project where this run will be logged
+        project=experiment_definition.pop('wandb_project'),
+        group=experiment_definition.pop('experiment_name'),
+        tags=experiment_definition.pop('tags', None),
+        notes=experiment_definition.pop('notes', None),
+        # track hyperparameters and run metadata
+        config=experiment_definition['hyperparameters'],
+    )
 
 def _get_evaluation_summary(unadapted_evaluation_results, adapted_evaluation_results):
     evaluation_summary = {}
@@ -79,17 +90,8 @@ def _save_results(experiment_definition, unadapted_predictions, adapted_predicti
 
     return base_path
 
-def _determine_target_language(hyperparameters):
-    if "target_language" in hyperparameters:
-        return hyperparameters["target_language"]
-    else:
-        data_loader = hyperparameters["data_loader"]
-        if isinstance(data_loader, dict):
-            return data_loader["args"]["target_language"]
-        
-    raise Exception("Could not determine target language from hyperparameters.")
-
 def run(**experiment_definition):
+    _initialize_experiment(experiment_definition)
     hyperparameters = experiment_definition['hyperparameters']
 
     source_texts, target_texts, positive_bag_of_words, negative_bag_of_words = load_data_from_data_loader(hyperparameters["data_loader"])
@@ -104,11 +106,8 @@ def run(**experiment_definition):
     predictions = make_predictions(source_texts, max_length=hyperparameters.get("length", 100), model_name=model_name, device=device)
     
     metrics = [("bleu", None),
-            ("google_bleu", None), 
-            ("sacrebleu", None), 
-            ("meteor", None), 
             ("chrf", None), 
-            ("bertscore", {"lang":_determine_target_language(hyperparameters)})]
+            ("bertscore", {"lang":determine_target_language(hyperparameters)})]
 
     batch_size = experiment_definition.pop("batch_size", 50)
     worker_count = experiment_definition.pop("worker_count", 4)
@@ -135,4 +134,5 @@ def run(**experiment_definition):
 
     _save_results(experiment_definition, predictions, adapted_predictions, unadapted_evaluation_results, adapted_evaluation_results, evaluation_summary)
     _log_results_in_wandb(experiment_definition, predictions, adapted_predictions, evaluation_summary)
+    wandb.finish()
     return adapted_evaluation_results, unadapted_evaluation_results
