@@ -6,6 +6,7 @@ import importlib
 import time
 import wandb
 import json
+from data_loader_helpers import load_data_from_data_loader
 
 def _get_evaluation_summary(unadapted_evaluation_results, adapted_evaluation_results):
     evaluation_summary = {}
@@ -33,7 +34,7 @@ def _get_evaluation_summary(unadapted_evaluation_results, adapted_evaluation_res
     return evaluation_summary
 
 def _log_results_in_wandb(experiment_definition, predictions, adapted_predictions, evaluation_summary):
-    source_texts, target_texts, positive_bag_of_words, negative_bag_of_words = _load_data_from_data_loader(experiment_definition["hyperparameters"]["data_loader"])
+    source_texts, target_texts, positive_bag_of_words, negative_bag_of_words = load_data_from_data_loader(experiment_definition["hyperparameters"]["data_loader"])
 
     if positive_bag_of_words is not None:
         wandb.log({"positive_bag_of_words": positive_bag_of_words})
@@ -88,20 +89,10 @@ def _determine_target_language(hyperparameters):
         
     raise Exception("Could not determine target language from hyperparameters.")
 
-def _load_data_from_data_loader(data_loader_definition): 
-    # if data_loader_definition is a string, import the module and call load_data
-    if isinstance(data_loader_definition, str):
-        data_loader = importlib.import_module(data_loader_definition)
-        return data_loader.load_data()
-    # if data_loader_definition is a dictionary, call load_data with the arguments in the dictionary
-    elif isinstance(data_loader_definition, dict):
-        data_loader = importlib.import_module(data_loader_definition['name'])
-        return data_loader.load_data(**data_loader_definition['args'])
-
 def run(**experiment_definition):
     hyperparameters = experiment_definition['hyperparameters']
 
-    source_texts, target_texts, positive_bag_of_words, negative_bag_of_words = _load_data_from_data_loader(hyperparameters["data_loader"])
+    source_texts, target_texts, positive_bag_of_words, negative_bag_of_words = load_data_from_data_loader(hyperparameters["data_loader"])
 
     device = experiment_definition.get("device", "mps")
     model_name = hyperparameters["translation_model"]
