@@ -2,10 +2,10 @@
     "experiment_entry_point": "baseline_experiment",
     "wandb_project": "ppnmt-baseline",
     "device": "mps",
-    
+
     "hyperparameters" : {
         "num_folds": 5,
-        "num_train_epochs": 5,
+        "num_train_epochs": 2,
         "batch_size": 16
     } 
 }

@@ -1,7 +1,8 @@
 from transformers import MarianMTModel, MarianTokenizer, GenerationConfig
 
-def make_predictions(source_texts, max_length=100, output_file_name=None, model_name="Helsinki-NLP/opus-mt-en-de", device="cpu"):
-    # set the device
+def make_predictions(source_texts, max_length=100, output_file_name=None, model_name="Helsinki-NLP/opus-mt-en-de", tokenizer_name=None, device="cpu"):
+    if tokenizer_name is None:
+        tokenizer_name = model_name
 
     model = MarianMTModel.from_pretrained(
         model_name,
@@ -11,7 +12,7 @@ def make_predictions(source_texts, max_length=100, output_file_name=None, model_
     model.eval()
 
     # load tokenizer
-    tokenizer = MarianTokenizer.from_pretrained(model_name)
+    tokenizer = MarianTokenizer.from_pretrained(tokenizer_name)
 
     predictions = []
     tokenizer_output = tokenizer(source_texts, return_tensors="pt", padding=True).to(device)
