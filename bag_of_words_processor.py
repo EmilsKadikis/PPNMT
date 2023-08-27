@@ -9,7 +9,9 @@ def get_bag_of_words_vectors(tokenizer, bag_of_words_paths: List[str] = None, ba
         bags_of_words = _load_bags_of_words(bag_of_words_paths)
         # flatten bags_of_words
         bag_of_words = [word for bag in bags_of_words for word in bag]
-    bow_indices = [tokenizer.encode(word.strip(), add_special_tokens=False) for word in bag_of_words]
+    with tokenizer.as_target_tokenizer():
+        bow_indices = [tokenizer.encode(word.strip(), add_special_tokens=False) for word in bag_of_words]
+    print("Bag of word indices: ", bow_indices)
     return _build_bows_one_hot_vectors(bow_indices, tokenizer, device)
 
 """ Gets the given bags of words, tokenizes each word in it and returns a list of their indices. """
@@ -41,7 +43,5 @@ def _build_bows_one_hot_vectors(bow_indices, tokenizer, device='cpu'):
 if __name__ == '__main__':
     from transformers import MarianTokenizer
     tokenizer = MarianTokenizer.from_pretrained('Helsinki-NLP/opus-mt-en-de')
-    bows = get_bag_of_words_vectors(tokenizer, bag_of_words_paths=['test_bow', 'test_bow2'])
-    print(bows)
     bows = get_bag_of_words_vectors(tokenizer, bag_of_words=["Sie", "Ihr", "Ihnen"])
     print(bows)

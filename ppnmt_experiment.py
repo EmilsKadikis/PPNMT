@@ -12,7 +12,7 @@ def _initialize_experiment(experiment_definition):
     wandb.init(
         # set the wandb project where this run will be logged
         project=experiment_definition.pop('wandb_project'),
-        group=experiment_definition.pop('experiment_name'),
+        group=experiment_definition['experiment_name'],
         tags=experiment_definition.pop('tags', None),
         notes=experiment_definition.pop('notes', None),
         # track hyperparameters and run metadata
@@ -135,4 +135,4 @@ def run(**experiment_definition):
     _save_results(experiment_definition, predictions, adapted_predictions, unadapted_evaluation_results, adapted_evaluation_results, evaluation_summary)
     _log_results_in_wandb(experiment_definition, predictions, adapted_predictions, evaluation_summary)
     wandb.finish()
-    return adapted_evaluation_results, unadapted_evaluation_results
+    return adapted_evaluation_results, unadapted_evaluation_results, evaluation_summary
