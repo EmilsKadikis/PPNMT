@@ -23,18 +23,12 @@ def load_data(source_language, target_language, split, domain, target_formality)
     language_pair = source_language + "-" + target_language
     base_path = f"./formality/CoCoA-MT/{split}/{language_pair}/"
     
-    if domain == "all":
-        if split == "train":
-            domains = ["telephony", "topical_chat"]
-        elif split == "test":
-            domains = ["telephony", "topical_chat", "call_center"]
-    else:
-        domains = [domain]
+    domains = [domain]
 
     source_files, target_files, target_files_feminine = [], [],[]
     for domain in domains:
-        source_suffix = f".{source_language}" if split == "train" else ""
-        target_suffix = f".{target_language}" if split == "train" else ""
+        source_suffix = f".{source_language}" if domain == "all" or (split == "train" and target_language != "ja") else ""
+        target_suffix = f".{target_language}" if domain == "all" or (split == "train" and target_language != "ja") else ""
         source_files.append(f"formality-control.{split}.{domain}.{language_pair}{source_suffix}")
         target_files.append(f"formality-control.{split}.{domain}.{language_pair}.{target_formality}{target_suffix}")
         if target_language != "ja":
