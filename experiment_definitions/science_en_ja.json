@@ -1,7 +1,7 @@
 {
     "experiments": [
         {
-            "base": "experiment_definitions/base.json",
+            "base": "experiment_definitions/ppnmt_base.json",
             "experiment_name": "science_domain", 
             "tags": ["science", "medicine", "en-ja"],
             "notes": "",
