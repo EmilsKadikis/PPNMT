@@ -1,22 +1,56 @@
-import argparse
-import re
+from transformers import MarianTokenizer
 
-parser = argparse.ArgumentParser()
-parser.add_argument('language', type=str, choices=['de', 'es', 'fr', 'hi', 'it', 'ja'])
-parser.add_argument('domain', type=str, choices=['telephony', 'topical_chat'])
-parser.add_argument('formality', type=str, choices=['formal', 'informal'])
+def generate_bag_of_words(model, formal_file_path, informal_file_path, length = 10):
+    tokenizer = MarianTokenizer.from_pretrained(model)
 
-args = parser.parse_args()
+    import re
+    pattern = r'\[F\](.*?)\[/F\]'
 
-if __name__ == "__main__":
-    language_pair = "en-" + args.language
-    base_path = "./formality/CoCoA-MT/train/" + language_pair + "/"
-    file_name = "formality-control.train." + args.domain + "." + language_pair + "." + args.formality + ".annotated." + args.language
     texts = []
-
-    with open(base_path + file_name, "r") as f:
+    with open(formal_file_path, "r") as f:
         for line in f:
-            # extract the text that's between [F] and [/F] tags with regex
-            result = re.findall(r'\[F\](.*?)\[\/F\]', line)
-            texts.extend(result)
-    print(list(set(texts)))
+            texts.append(line.strip())
+
+    formal_token_counts = {}
+    for text in texts:
+        formal_words = " ".join(re.findall(pattern, text))
+        with tokenizer.as_target_tokenizer():
+            tokens = tokenizer(formal_words)["input_ids"]
+        for token in tokens:
+            if token in formal_token_counts:
+                formal_token_counts[token] += 1
+            else:
+                formal_token_counts[token] = 1
+
+    texts = []
+    with open(informal_file_path, "r") as f:
+        for line in f:
+            texts.append(line.strip())
+
+    informal_token_counts = {}
+    for text in texts:
+        informal_words = " ".join(re.findall(pattern, text))
+        with tokenizer.as_target_tokenizer():
+            tokens = tokenizer(informal_words)["input_ids"]
+        for token in tokens:
+            if token in informal_token_counts:
+                informal_token_counts[token] += 1
+            else:
+                informal_token_counts[token] = 1
+
+    formal_bow = []
+    informal_bow = []
+
+    for item in sorted(formal_token_counts.items(), key=lambda item: item[1], reverse=True):
+        if item[0] not in informal_token_counts:
+            formal_bow.append(tokenizer.decode(item[0]))
+        if len(formal_bow) == length:
+            break
+            
+    for item in sorted(informal_token_counts.items(), key=lambda item: item[1], reverse=True):
+        if item[0] not in formal_token_counts:
+            informal_bow.append(tokenizer.decode(item[0]))
+        if len(informal_bow) == length:
+            break
+
+    return formal_bow, informal_bow
