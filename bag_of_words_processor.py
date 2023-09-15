@@ -11,7 +11,10 @@ def get_bag_of_words_vectors(tokenizer, bag_of_words_paths: List[str] = None, ba
         bag_of_words = [word for bag in bags_of_words for word in bag]
     with tokenizer.as_target_tokenizer():
         bow_indices = [tokenizer.encode(word.strip(), add_special_tokens=False) for word in bag_of_words]
+        bow_tokens = [tokenizer.tokenize(word.strip(), add_special_tokens=False) for word in bag_of_words]
+    print("Bag of words: ", bag_of_words)
     print("Bag of word indices: ", bow_indices)
+    print("Bag of word tokens: ", bow_tokens)
     return _build_bows_one_hot_vectors(bow_indices, tokenizer, device)
 
 """ Gets the given bags of words, tokenizes each word in it and returns a list of their indices. """
