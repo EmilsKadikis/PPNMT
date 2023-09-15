@@ -18,7 +18,7 @@ def load_data(split, target_gender, allow_ambiguous_instances=False, count=None,
         assert automatic_bag_of_words_model is not None and automatic_bag_of_words_length is not None
         _, male_texts = _load_texts(split, "M", allow_ambiguous_instances, count)
         _, female_texts = _load_texts(split, "F", allow_ambiguous_instances, count)
-        male_bow, female_bow = generate_bag_of_words(automatic_bag_of_words_model, male_texts, female_texts, automatic_bag_of_words_length)
+        male_bow, female_bow = generate_bag_of_words(automatic_bag_of_words_model, automatic_bag_of_words_length, [male_texts, female_texts])
     if target_gender == "M":
         return source_texts, target_texts, male_bow, female_bow
     else:

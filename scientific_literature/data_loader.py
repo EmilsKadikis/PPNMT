@@ -1,4 +1,4 @@
-possible_bag_of_words_types = ["topic_modeling"]
+possible_bag_of_words_types = ["topic_modeling", "contrastive"]
 possible_splits = ["train", "dev", "devtest", "test"]
 possible_source_languages = ["en", "ja"]
 possible_target_languages = ["en", "ja"]
@@ -29,7 +29,7 @@ possible_domains = {
     "other": "Z"
 }
 
-def load_data(source_language, target_language, split, domain, bag_of_words_type, distractor_domains=None, count=200, count_for_bag_of_words=None, use_negative_bags_of_words=False):
+def load_data(source_language, target_language, split, domain, bag_of_words_type, distractor_domains=None, count=200, count_for_bag_of_words=None, bag_of_words_size=None, use_negative_bags_of_words=False):
     if domain not in possible_domains:
         raise ValueError("Invalid domain: " + domain)
     if distractor_domains is not None:
@@ -78,6 +78,11 @@ def load_data(source_language, target_language, split, domain, bag_of_words_type
             positive_bag_of_words, negative_bag_of_words = _get_topic_modeling_bag_of_words(japanese_texts, target_language, domain_code, distractor_domain_codes, count_for_bag_of_words)
         else:
             positive_bag_of_words, negative_bag_of_words = _get_topic_modeling_bag_of_words(english_texts, target_language, domain_code, distractor_domain_codes, count_for_bag_of_words)
+    elif bag_of_words_type == "contrastive":
+        if target_language == "ja":
+            positive_bag_of_words, negative_bag_of_words = _get_contrastive_bag_of_words(japanese_texts, target_language, domain_code, distractor_domain_codes, count_for_bag_of_words, bag_of_words_size)
+        else:
+            positive_bag_of_words, negative_bag_of_words = _get_contrastive_bag_of_words(english_texts, target_language, domain_code, distractor_domain_codes, count_for_bag_of_words, bag_of_words_size)
     else:
         raise ValueError("Invalid bag of words type: " + bag_of_words_type)
     
@@ -114,7 +119,7 @@ def _load_all_domain_texts(split, count = None):
 
 
 def _get_topic_modeling_bag_of_words(target_texts, target_language, domain_code, distractor_domain_codes, count):
-    from topic_modelling_bag_of_words_generator import generate_bags_of_words
+    from topic_modelling_bag_of_words_generator import generate_bags_of_words as generate_bag_of_words_topic_modelling
     domain_texts = [target_texts[domain_code][0:count]]
     other_domain_texts = []
     for other_domain_code in distractor_domain_codes:
@@ -122,10 +127,28 @@ def _get_topic_modeling_bag_of_words(target_texts, target_language, domain_code,
             other_domain_texts.append(target_texts[other_domain_code][0:count])
     domain_texts.extend(other_domain_texts)
             
-    bags_of_words = generate_bags_of_words(domain_texts, target_language)
+    bags_of_words = generate_bag_of_words_topic_modelling(domain_texts, target_language)
     negative_bags_of_words = bags_of_words[1:]
     negative_bag_of_words = [word for bag_of_words in negative_bags_of_words for word in bag_of_words]
     return bags_of_words[0], negative_bag_of_words
+
+def _get_contrastive_bag_of_words(target_texts, target_language, domain_code, distractor_domain_codes, count, max_bag_size=10):
+    from generate_bag_of_words_contrastive import generate_bag_of_words as generate_bag_of_words_contrastive
+    
+    domain_texts = [target_texts[domain_code][0:count]]
+    other_domain_texts = []
+    for other_domain_code in distractor_domain_codes:
+        if other_domain_code != domain_code:
+            other_domain_texts.append(target_texts[other_domain_code][0:count])
+    domain_texts.extend(other_domain_texts)
+
+    tokenizer_model = "Helsinki-NLP/opus-mt-en-jap" if target_language == "ja" else "Helsinki-NLP/opus-mt-ja-en"
+    bags_of_words = generate_bag_of_words_contrastive(tokenizer_model, max_bag_size, domain_texts)
+    negative_bags_of_words = bags_of_words[1:]
+    negative_bag_of_words = [word for bag_of_words in negative_bags_of_words for word in bag_of_words]
+    return bags_of_words[0], negative_bag_of_words
+
+
 
 if __name__ == "__main__":
     # examples
