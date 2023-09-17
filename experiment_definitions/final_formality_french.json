@@ -1,0 +1,39 @@
+{
+    "experiments": [
+        {
+            "base": "experiment_definitions/ppnmt_base.json",
+            "experiment_name": "formality_adaptation", 
+            "tags": ["informality", "all", "en-fr"],
+            "notes": "",
+            "try_combinations": [],
+            "device": "mps",
+
+            "extra_evaluation": {
+                "name": "formality.evaluate_formality_accuracy",
+                "args": {
+                    "annotated_formal_texts": "./formality/CoCoA-MT/test/en-fr/formality-control.test.all.en-fr.formal.annotated.fr", 
+                    "annotated_informal_texts": "./formality/CoCoA-MT/test/en-fr/formality-control.test.all.en-fr.informal.annotated.fr"
+                }
+            },
+            
+            "hyperparameters" : {
+                "translation_model": "Helsinki-NLP/opus-mt-en-fr",
+                "data_loader": {
+                    "name":"formality.data_loader",
+                    "args": {
+                        "source_language": "en",
+                        "target_language": "fr",
+                        "split": "test",
+                        "domain": "all",
+                        "target_formality": "informal",
+
+                        "automatic_bag_of_words_length": 30,
+                        "automatic_bag_of_words_model": "Helsinki-NLP/opus-mt-en-fr",
+                        "automatic_bag_of_words_formal_file_path": "./formality/CoCoA-MT/train/en-fr/formality-control.train.all.en-fr.formal.annotated.fr",
+                        "automatic_bag_of_words_informal_file_path": "./formality/CoCoA-MT/train/en-fr/formality-control.train.all.en-fr.informal.annotated.fr"
+                    }
+                }
+            }
+        }
+    ]
+}
