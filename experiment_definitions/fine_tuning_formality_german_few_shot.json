@@ -1,0 +1,45 @@
+{
+    "experiments": [
+        {
+            "base": "experiment_definitions/fine_tuning_base.json",
+            "experiment_name": "formality_adaptation", 
+            "tags": ["informality", "telephony", "en-de", "few-shot"],
+            "notes": "",
+            "try_combinations": [],
+            "device": "cpu",
+
+            "extra_evaluation": {
+                "name": "formality.evaluate_formality_accuracy",
+                "args": {
+                    "annotated_formal_texts": "./formality/CoCoA-MT/test/en-de/formality-control.test.all.en-de.formal.annotated.de", 
+                    "annotated_informal_texts": "./formality/CoCoA-MT/test/en-de/formality-control.test.all.en-de.informal.annotated.de"
+                }
+            },
+            
+            "hyperparameters" : {        
+                "translation_model": "Helsinki-NLP/opus-mt-en-de",
+                "data_loader": {
+                    "name":"formality.data_loader",
+                    "args": {
+                        "few_shot_count": 1,
+                        "source_language": "en",
+                        "target_language": "de",
+                        "split": "train",
+                        "domain": "only_with_formality_phrases",
+                        "target_formality": "informal"
+                    }
+                },
+                "validation_data_loader": {
+                    "name":"formality.data_loader",
+                    "args": {
+                        "source_language": "en",
+                        "target_language": "de",
+                        "split": "test",
+                        "domain": "all",
+                        "target_formality": "informal"
+                    }
+                }
+            }
+        }
+    ]
+}

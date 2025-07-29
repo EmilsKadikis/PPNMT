@@ -2,8 +2,8 @@
     "experiments": [
         {
             "base": "experiment_definitions/ppnmt_base.json",
-            "experiment_name": "fgrada_network", 
-            "tags": ["fgrada", "network", "zh-en"],
+            "experiment_name": "fgrada_education", 
+            "tags": ["fgrada", "education", "zh-en"],
             "notes": "",
             "try_combinations": [],
             "verbosity": "quiet",
@@ -16,7 +16,7 @@
                         "source_language": "zh",
                         "target_language": "en",
                         "split": "test",
-                        "domain": "network-sentences",
+                        "domain": "education-sentences",
                         "bag_of_words_type": "dict",
                         "use_negative_bags_of_words": true
                     }
@@ -25,8 +25,8 @@
         },
         {
             "base": "experiment_definitions/ppnmt_base.json",
-            "experiment_name": "fgrada_network", 
-            "tags": ["fgrada", "network", "en-zh"],
+            "experiment_name": "fgrada_education", 
+            "tags": ["fgrada", "education", "en-zh"],
             "notes": "",
             "try_combinations": [],
             "verbosity": "quiet",
@@ -39,7 +39,7 @@
                         "source_language": "en",
                         "target_language": "zh",
                         "split": "test",
-                        "domain": "network-sentences",
+                        "domain": "education-sentences",
                         "bag_of_words_type": "dict",
                         "use_negative_bags_of_words": true
                     }

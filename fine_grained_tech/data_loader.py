@@ -4,7 +4,7 @@ possible_domains = ["auto", "education", "network", "phone", "auto-sentences", "
 possible_bag_of_words_types = ["dict", "topic_modeling", "contrastive", "contrastive_dict"]
 possible_splits = ["dev", "test"]
 
-def load_data(source_language, target_language, split, domain, bag_of_words_type, use_negative_bags_of_words=False, bag_of_words_size=10):
+def load_data(source_language, target_language, split, domain, bag_of_words_type=None, use_negative_bags_of_words=False, bag_of_words_size=10):
     if source_language not in possible_source_languages:
         raise ValueError("Invalid source language: " + source_language)
     if target_language not in possible_target_languages:

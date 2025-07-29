@@ -1,0 +1,35 @@
+{
+    "experiments": [
+        {
+            "base": "experiment_definitions/ppnmt_base.json",
+            "experiment_name": "formality_adaptation", 
+            "tags": ["informality", "all", "en-de"],
+            "notes": "",
+            "try_combinations": [],
+
+            "extra_evaluation": {
+                "name": "formality.evaluate_formality_accuracy",
+                "args": {
+                    "annotated_formal_texts": "./formality/CoCoA-MT/test/en-de/formality-control.test.all.en-de.formal.annotated.de", 
+                    "annotated_informal_texts": "./formality/CoCoA-MT/test/en-de/formality-control.test.all.en-de.informal.annotated.de"
+                }
+            },
+            
+            "hyperparameters" : {
+                "translation_model": "Helsinki-NLP/opus-mt-en-de",
+                "data_loader": {
+                    "name":"formality.data_loader",
+                    "args": {
+                        "source_language": "en",
+                        "target_language": "de",
+                        "split": "test",
+                        "domain": "all",
+                        "target_formality": "informal"
+                    }
+                },
+                "bag_of_words": ["du"],
+                "negative_bag_of_words": ["Sie"]
+            }
+        }
+    ]
+}

@@ -3,10 +3,10 @@ from formality.generate_bag_of_words_from_annotated_text import generate_bag_of_
 allowed_source_languages = ["en"]
 allowed_target_languages = ["de", "es", "fr", "hi", "it", "ja"]
 allowed_splits = ["train", "test"]
-allowed_domains = ["telephony", "topical_chat", "call_center", "all"]
+allowed_domains = ["telephony", "topical_chat", "call_center", "all", "only_with_formality_phrases"]
 allowed_target_formalities = ["formal", "informal"]
 
-def load_data(source_language, target_language, split, domain, target_formality, automatic_bag_of_words_length = None, automatic_bag_of_words_model = None, automatic_bag_of_words_formal_file_path = None, automatic_bag_of_words_informal_file_path = None):
+def load_data(source_language, target_language, split, domain, target_formality, few_shot_count=None, automatic_bag_of_words_length = None, automatic_bag_of_words_model = None, automatic_bag_of_words_formal_file_path = None, automatic_bag_of_words_informal_file_path = None):
     if source_language not in allowed_source_languages:
         raise ValueError("Invalid source language: " + source_language)
     if target_language not in allowed_target_languages:
@@ -50,6 +50,10 @@ def load_data(source_language, target_language, split, domain, target_formality,
 
     if target_texts_feminine != []:
         target_texts = list(map(list, zip(target_texts, target_texts_feminine)))
+
+    if few_shot_count is not None:
+        source_texts = source_texts[:few_shot_count]
+        target_texts = target_texts[:few_shot_count]
 
     formal_bow, informal_bow = None, None
     if automatic_bag_of_words_length is not None:

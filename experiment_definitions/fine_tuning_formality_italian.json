@@ -1,0 +1,82 @@
+{
+    "experiments": [
+        {
+            "base": "experiment_definitions/fine_tuning_base.json",
+            "experiment_name": "formality_adaptation", 
+            "tags": ["formality", "telephony", "en-it"],
+            "notes": "",
+            "try_combinations": [],
+
+            "extra_evaluation": {
+                "name": "formality.evaluate_formality_accuracy",
+                "args": {
+                    "annotated_formal_texts": "./formality/CoCoA-MT/test/en-it/formality-control.test.all.en-it.formal.annotated.it", 
+                    "annotated_informal_texts": "./formality/CoCoA-MT/test/en-it/formality-control.test.all.en-it.informal.annotated.it"
+                }
+            },
+            
+            "hyperparameters" : {        
+                "translation_model": "Helsinki-NLP/opus-mt-en-it",
+                "data_loader": {
+                    "name":"formality.data_loader",
+                    "args": {
+                        "source_language": "en",
+                        "target_language": "it",
+                        "split": "train",
+                        "domain": "all",
+                        "target_formality": "formal"
+                    }
+                },
+                "validation_data_loader": {
+                    "name":"formality.data_loader",
+                    "args": {
+                        "source_language": "en",
+                        "target_language": "it",
+                        "split": "test",
+                        "domain": "all",
+                        "target_formality": "formal"
+                    }
+                }
+            }
+        },
+        {
+            "base": "experiment_definitions/fine_tuning_base.json",
+            "experiment_name": "formality_adaptation", 
+            "tags": ["informality", "telephony", "en-it"],
+            "notes": "",
+            "try_combinations": [],
+
+            "extra_evaluation": {
+                "name": "formality.evaluate_formality_accuracy",
+                "args": {
+                    "annotated_formal_texts": "./formality/CoCoA-MT/test/en-it/formality-control.test.all.en-it.formal.annotated.it", 
+                    "annotated_informal_texts": "./formality/CoCoA-MT/test/en-it/formality-control.test.all.en-it.informal.annotated.it"
+                }
+            },
+            
+            "hyperparameters" : {        
+                "translation_model": "Helsinki-NLP/opus-mt-en-it",
+                "data_loader": {
+                    "name":"formality.data_loader",
+                    "args": {
+                        "source_language": "en",
+                        "target_language": "it",
+                        "split": "train",
+                        "domain": "all",
+                        "target_formality": "informal"
+                    }
+                },
+                "validation_data_loader": {
+                    "name":"formality.data_loader",
+                    "args": {
+                        "source_language": "en",
+                        "target_language": "it",
+                        "split": "test",
+                        "domain": "all",
+                        "target_formality": "informal"
+                    }
+                }
+            }
+        }
+    ]
+}

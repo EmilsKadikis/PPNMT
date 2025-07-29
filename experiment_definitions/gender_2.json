@@ -1,0 +1,48 @@
+{
+    "experiments": [
+        {
+            "base": "experiment_definitions/ppnmt_base.json",
+            "experiment_name": "gender_adaptation", 
+            "tags": ["gender", "female", "en-ar"],
+            "notes": "",
+            "try_combinations": [],
+            
+            "hyperparameters" : {
+                "translation_model": "Helsinki-NLP/opus-mt-en-ar",
+                "target_language": "ar",
+                "data_loader": {
+                    "name":"gender.data_loader",
+                    "args": {
+                        "split": "train",
+                        "allow_ambiguous_instances": false,
+                        "target_gender": "F"
+                    }
+                },
+                "bag_of_words": ["أنتِ", "ها", "هي", "كِ", "ية"], 
+                "negative_bag_of_words": ["أنتَ", "هُ", "هو", "ي", "كَ"]
+            }
+        },
+        {
+            "base": "experiment_definitions/ppnmt_base.json",
+            "experiment_name": "gender_adaptation", 
+            "tags": ["gender", "male", "en-ar"],
+            "notes": "",
+            "try_combinations": [],
+            
+            "hyperparameters" : {
+                "translation_model": "Helsinki-NLP/opus-mt-en-ar",
+                "target_language": "ar",
+                "data_loader": {
+                    "name":"gender.data_loader",
+                    "args": {
+                        "split": "train",
+                        "allow_ambiguous_instances": false,
+                        "target_gender": "M"
+                    }
+                },
+                "bag_of_words": ["أنتَ", "هُ", "هو", "ي", "كَ"],
+                "negative_bag_of_words": ["أنتِ", "ها", "هي", "كِ", "ية"]
+            }
+        }
+    ]
+}

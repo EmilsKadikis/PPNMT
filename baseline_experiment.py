@@ -9,6 +9,7 @@ import time
 from evaluation import evaluate_with_metric, extract_score
 import random
 import string
+import importlib
 from experiment_helpers import load_data_from_data_loader, determine_target_language, determine_source_language
 from predict import make_predictions
 
@@ -88,6 +89,8 @@ def run(**experiment_definition):
         random_state = random.randint(0, 100000000) 
         kf = KFold(n_splits=num_folds, shuffle=True, random_state=random_state)
 
+        validation_predictions = []
+
         for fold, (train_index, dev_index) in enumerate(kf.split(all_texts)):
             wandb.init(
                 project=wandb_project, 
@@ -102,10 +105,8 @@ def run(**experiment_definition):
             output_dir = f"models/output_{timestamp}_fold_{fold + 1}"
             train_dataset, dev_dataset = create_datasets_for_crossfold_validation(target_language, source_language, tokenizer, all_texts, train_index, dev_index)
             perform_training(model_name, train_dataset, dev_dataset, num_train_epochs, batch_size, output_dir, tokenizer, compute_metrics, device)
-
             wandb.finish()
     else:
-
         wandb.init(
             project=wandb_project, 
             group=random_group_name,
@@ -124,14 +125,29 @@ def run(**experiment_definition):
         log_predictions_to_wandb("train_", source_texts, target_texts, initial_train_predictions, final_train_predictions)
         log_predictions_to_wandb("validation_", source_texts_val, target_texts_val, initial_validation_predictions, final_validation_predictions)
 
-        wandb.finish()
+        metrics = [("bleu", None),
+                ("chrf", None), 
+                ("bertscore", {"lang":target_language})]
 
+        adapted_evaluation_results = {}
+        for (metric_name, kwargs) in metrics:
+            result = evaluate_with_metric(final_validation_predictions, target_texts_val, metric_name, kwargs)
+            adapted_evaluation_results[metric_name] = extract_score(metric_name, result)
+        print(adapted_evaluation_results)
+        wandb.log(adapted_evaluation_results)
+
+        extra_evaluation_results = {}
+        extra_evaluation = experiment_definition.get("extra_evaluation", None)      
+        if extra_evaluation is not None:
+            evaluation = importlib.import_module(extra_evaluation["name"])
+            extra_evaluation_results = evaluation.evaluate(final_validation_predictions, initial_validation_predictions, extra_evaluation.get("args", {}))
+            wandb.log(extra_evaluation_results)
+
+        wandb.finish()
 
 
     if num_folds > 1:
         print("Fold evaluation complete\n")
-
-    wandb.finish()
 
     print("Training complete")
 

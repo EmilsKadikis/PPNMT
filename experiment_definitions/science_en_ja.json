@@ -8,7 +8,7 @@
             "try_combinations": [],
             
             "hyperparameters" : {
-                "translation_model": "Helsinki-NLP/opus-mt-en-ja",
+                "translation_model": "Helsinki-NLP/opus-mt-en-jap",
                 "data_loader": {
                     "name":"scientific_literature.data_loader",
                     "args": {
@@ -16,8 +16,84 @@
                         "target_language": "ja",
                         "split": "train",
                         "domain": "medicine",
-                        "distractor_domains": ["physics", "biology", "chemistry", "computer science"],
-                        "bag_of_words_type": "topic_modeling",
+                        "distractor_domains": ["physics", "biology", "electronic engineering"],
+                        "bag_of_words_type": "contrastive",
+                        "bag_of_words_size": 10,
+                        "count": 200,
+                        "use_negative_bags_of_words": true
+                    }
+                }
+            }
+        },
+        {
+            "base": "experiment_definitions/ppnmt_base.json",
+            "experiment_name": "science_domain", 
+            "tags": ["science", "physics", "en-ja"],
+            "notes": "",
+            "try_combinations": [],
+            
+            "hyperparameters" : {
+                "translation_model": "Helsinki-NLP/opus-mt-en-jap",
+                "data_loader": {
+                    "name":"scientific_literature.data_loader",
+                    "args": {
+                        "source_language": "en",
+                        "target_language": "ja",
+                        "split": "train",
+                        "domain": "physics",
+                        "distractor_domains": ["medicine", "biology", "electronic engineering"],
+                        "bag_of_words_type": "contrastive",
+                        "bag_of_words_size": 10,
+                        "count": 200,
+                        "use_negative_bags_of_words": true
+                    }
+                }
+            }
+        },
+        {
+            "base": "experiment_definitions/ppnmt_base.json",
+            "experiment_name": "science_domain", 
+            "tags": ["science", "biology", "en-ja"],
+            "notes": "",
+            "try_combinations": [],
+            
+            "hyperparameters" : {
+                "translation_model": "Helsinki-NLP/opus-mt-en-jap",
+                "data_loader": {
+                    "name":"scientific_literature.data_loader",
+                    "args": {
+                        "source_language": "en",
+                        "target_language": "ja",
+                        "split": "train",
+                        "domain": "biology",
+                        "distractor_domains": ["medicine", "physics", "electronic engineering"],
+                        "bag_of_words_type": "contrastive",
+                        "bag_of_words_size": 10,
+                        "count": 200,
+                        "use_negative_bags_of_words": true
+                    }
+                }
+            }
+        },
+        {
+            "base": "experiment_definitions/ppnmt_base.json",
+            "experiment_name": "science_domain", 
+            "tags": ["science", "electronic engineering", "en-ja"],
+            "notes": "",
+            "try_combinations": [],
+            
+            "hyperparameters" : {
+                "translation_model": "Helsinki-NLP/opus-mt-en-jap",
+                "data_loader": {
+                    "name":"scientific_literature.data_loader",
+                    "args": {
+                        "source_language": "en",
+                        "target_language": "ja",
+                        "split": "train",
+                        "domain": "electronic engineering",
+                        "distractor_domains": ["medicine", "physics", "biology"],
+                        "bag_of_words_type": "contrastive",
+                        "bag_of_words_size": 10,
                         "count": 200,
                         "use_negative_bags_of_words": true
                     }

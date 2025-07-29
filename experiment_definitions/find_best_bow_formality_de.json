@@ -8,7 +8,7 @@
             "notes": "",
             "try_combinations": [],
             "batch_size": 200,  
-            "worker_count": 1,
+            "worker_count": 2,
             "num_beams": 3,
 
             "extra_evaluation": {
@@ -31,7 +31,7 @@
                         "target_formality": "formal"
                     }
                 },
-                "bag_of_words": ["Ihnen","Ihr","Ihrer","Sie"] 
+                "bag_of_words": ["Ihnen","Ihr","Ihrer","Sie","Ihres","Ihrem","Ihre","Ihren"] 
             }
         },
         {
@@ -65,7 +65,7 @@
                         "target_formality": "informal"
                     }
                 },
-                "bag_of_words": ["du", "dich", "dir", "euch", "dein"] 
+                "bag_of_words": ["du", "dich", "dir", "dein", "deine", "deinem", "deinen", "deiner", "euch", "eure", "euer"] 
             }
         }
     ]

@@ -1,0 +1,63 @@
+{
+    "experiments": [
+        {
+            "base": "experiment_definitions/fine_tuning_base.json",
+            "experiment_name": "fgrada_auto", 
+            "tags": ["fgrada", "auto", "zh-en"],
+            "notes": "",
+            "try_combinations": [],
+            
+            "hyperparameters" : {
+                "translation_model": "Helsinki-NLP/opus-mt-zh-en",
+                "data_loader": {
+                    "name":"fine_grained_tech.data_loader",
+                    "args": {
+                        "source_language": "zh",
+                        "target_language": "en",
+                        "split": "dev",
+                        "domain": "auto-sentences"
+                    }
+                },
+                "validation_data_loader": {
+                    "name":"fine_grained_tech.data_loader",
+                    "args": {
+                        "source_language": "zh",
+                        "target_language": "en",
+                        "split": "test",
+                        "domain": "auto-sentences"
+                    }
+                }
+            }
+        },
+        {
+            "base": "experiment_definitions/fine_tuning_base.json",
+            "experiment_name": "fgrada_auto", 
+            "tags": ["fgrada", "auto", "en-zh"],
+            "notes": "",
+            "try_combinations": [],
+            
+            "hyperparameters" : {
+                "translation_model": "Helsinki-NLP/opus-mt-en-zh",
+                "data_loader": {
+                    "name":"fine_grained_tech.data_loader",
+                    "args": {
+                        "source_language": "en",
+                        "target_language": "zh",
+                        "split": "dev",
+                        "domain": "auto-sentences"
+                    }
+                },
+                "validation_data_loader": {
+                    "name":"fine_grained_tech.data_loader",
+                    "args": {
+                        "source_language": "en",
+                        "target_language": "zh",
+                        "split": "test",
+                        "domain": "auto-sentences"
+                    }
+                }
+
+            }
+        }
+    ]
+}

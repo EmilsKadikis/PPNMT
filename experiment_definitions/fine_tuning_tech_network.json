@@ -1,12 +1,11 @@
 {
     "experiments": [
         {
-            "base": "experiment_definitions/ppnmt_base.json",
+            "base": "experiment_definitions/fine_tuning_base.json",
             "experiment_name": "fgrada_network", 
             "tags": ["fgrada", "network", "zh-en"],
             "notes": "",
             "try_combinations": [],
-            "verbosity": "quiet",
             
             "hyperparameters" : {
                 "translation_model": "Helsinki-NLP/opus-mt-zh-en",
@@ -15,21 +14,27 @@
                     "args": {
                         "source_language": "zh",
                         "target_language": "en",
-                        "split": "test",
-                        "domain": "network-sentences",
-                        "bag_of_words_type": "dict",
-                        "use_negative_bags_of_words": true
+                        "split": "dev",
+                        "domain": "network-sentences"
                     }
-                }       
+                },
+                "validation_data_loader": {
+                    "name":"fine_grained_tech.data_loader",
+                    "args": {
+                        "source_language": "zh",
+                        "target_language": "en",
+                        "split": "test",
+                        "domain": "network-sentences"
+                    }
+                }
             }
         },
         {
-            "base": "experiment_definitions/ppnmt_base.json",
+            "base": "experiment_definitions/fine_tuning_base.json",
             "experiment_name": "fgrada_network", 
             "tags": ["fgrada", "network", "en-zh"],
             "notes": "",
             "try_combinations": [],
-            "verbosity": "quiet",
             
             "hyperparameters" : {
                 "translation_model": "Helsinki-NLP/opus-mt-en-zh",
@@ -38,12 +43,20 @@
                     "args": {
                         "source_language": "en",
                         "target_language": "zh",
-                        "split": "test",
-                        "domain": "network-sentences",
-                        "bag_of_words_type": "dict",
-                        "use_negative_bags_of_words": true
+                        "split": "dev",
+                        "domain": "network-sentences"
                     }
-                }       
+                },
+                "validation_data_loader": {
+                    "name":"fine_grained_tech.data_loader",
+                    "args": {
+                        "source_language": "en",
+                        "target_language": "zh",
+                        "split": "test",
+                        "domain": "network-sentences"
+                    }
+                }
+
             }
         }
     ]

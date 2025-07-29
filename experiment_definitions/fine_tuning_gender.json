@@ -1,0 +1,62 @@
+{
+    "experiments": [
+        {
+            "base": "experiment_definitions/fine_tuning_base.json",
+            "experiment_name": "gender_adaptation", 
+            "tags": ["gender", "female", "en-ar"],
+            "notes": "",
+            "try_combinations": [],
+            
+            "hyperparameters" : {
+                "translation_model": "Helsinki-NLP/opus-mt-en-ar",
+                "source_language": "en",
+                "target_language": "ar",
+                "data_loader": {
+                    "name":"gender.data_loader",
+                    "args": {
+                        "split": "train",
+                        "allow_ambiguous_instances": false,
+                        "target_gender": "F"
+                    }
+                },
+                "validation_data_loader": {
+                    "name":"gender.data_loader",
+                    "args": {
+                        "split": "test",
+                        "allow_ambiguous_instances": false,
+                        "target_gender": "F"
+                    }
+                }
+            }
+        },
+        {
+            "base": "experiment_definitions/fine_tuning_base.json",
+            "experiment_name": "gender_adaptation", 
+            "tags": ["gender", "male", "en-ar"],
+            "notes": "",
+            "try_combinations": [],
+            
+            "hyperparameters" : {
+                "translation_model": "Helsinki-NLP/opus-mt-en-ar",
+                "source_language": "en",
+                "target_language": "ar",
+                "data_loader": {
+                    "name":"gender.data_loader",
+                    "args": {
+                        "split": "train",
+                        "allow_ambiguous_instances": false,
+                        "target_gender": "M"
+                    }
+                },
+                "validation_data_loader": {
+                    "name":"gender.data_loader",
+                    "args": {
+                        "split": "test",
+                        "allow_ambiguous_instances": false,
+                        "target_gender": "M"
+                    }
+                }
+            }
+        }
+    ]
+}
